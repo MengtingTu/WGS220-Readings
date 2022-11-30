@@ -1,6 +1,6 @@
 ## Week12: Health Across the Lifespan
 
-**Strategy Focus: **
+**Strategy Focus:**
 
 Consider the risks and benefits of generalizations and speaking in terms of groups versus individuals.
 
