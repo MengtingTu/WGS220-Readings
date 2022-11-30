@@ -1,0 +1,2338 @@
+// Image Node Auto-Format with Auto Image Grouping.
+// Original version by Steve McKenzie.
+// Altered by Stella Power for jQuery version.
+
+(function ($) {
+
+function parse_url(url, param) {
+  param = param.replace(/[\[]/,"\\\[").replace(/[\]]/,"\\\]");
+  url = url.replace(/&amp;/, "&");
+  var regexS = "[\\?&]"+param+"=([^&#]*)";
+  var regex = new RegExp(regexS);
+  var results = regex.exec(url);
+  if (results === null) {
+    return "";
+  }
+  else {
+    return results[1];
+  }
+}
+
+
+function lightbox2_init_triggers(classes, rel_type, custom_class) {
+  if (classes == '' || rel_type == 0) {
+    return;
+  }
+  var settings = Drupal.settings.lightbox2;
+
+  var link_target  = "";
+  if (settings.node_link_target !== 0) {
+    link_target = 'target="'+ settings.node_link_target +'"';
+  }
+
+  $("a:has("+classes+")").each(function(i) {
+    if ((!settings.disable_for_gallery_lists && !settings.disable_for_acidfree_gallery_lists) || (!$(this).parents("td.giAlbumCell").attr("class") && !$(this).parents(".galleries").length && !$(this).parents(".acidfree-folder").length && !$(this).parents(".acidfree-list").length) || ($(this).parents(".galleries").length && !settings.disable_for_gallery_lists) || (($(this).parents(".acidfree-folder").length || $(this).parents(".acidfree-list").length) && !settings.disable_for_acidfree_gallery_lists)) {
+      var child = $(this).find(classes);
+      // Ensure the child has a class attribute we can work with.
+      if ($(child).attr("class")) {
+        // Set the alt text.
+        var alt = $(child).attr("alt");
+        if (!alt) {
+          alt = "";
+        }
+
+        // Set the image node link text.
+        var link_text = settings.node_link_text;
+        var download_link_text = settings.download_link_text;
+        var rewrite = 1;
+
+        // Set the rel attribute.
+        var rel = "lightbox";
+        var lightframe = false;
+        if (rel_type == "lightframe_ungrouped") {
+          rel = "lightframe[]";
+          lightframe = true;
+        }
+        else if (rel_type == "lightframe") {
+          lightframe = true;
+        }
+        else if (rel_type == "lightbox_ungrouped") {
+          rel = "lightbox[]";
+        }
+        if (rel_type != "lightbox_ungrouped" && rel_type != "lightframe_ungrouped") {
+          rel = rel_type + "[" + $(child).attr("class") + "]";
+        }
+
+        // Set the basic href attribute - need to ensure there's no language
+        // string (e.g. /en) prepended to the URL.
+        var id = null;
+        var href = $(child).attr("src");
+        var download = null;
+        var orig_href = $(this).attr("href");
+        var pattern = new RegExp(settings.file_path);
+        if (orig_href.match(pattern)) {
+          var lang_pattern = new RegExp(Drupal.settings.basePath + "\\w\\w\\/");
+          orig_href = orig_href.replace(lang_pattern, Drupal.settings.basePath);
+        }
+        var frame_href = orig_href;
+        // Handle flickr images.
+        if ($(child).attr("class").match("flickr-photo-img") ||
+          $(child).attr("class").match("flickr-photoset-img")) {
+          href = $(child).attr("src").replace("_s.", ".").replace("_t.", ".").replace("_m.", ".").replace("_b.", ".");
+          if (rel_type != "lightbox_ungrouped" && rel_type != "lightframe_ungrouped") {
+            rel = rel_type + "[flickr]";
+            if ($(child).parents("div.block-flickr").attr("class")) {
+              id = $(child).parents("div.block-flickr").attr("id");
+              rel = rel_type + "["+ id +"]";
+            }
+          }
+          download = href;
+        }
+
+        // Handle "image-img_assist_custom" images.
+        else if ($(child).filter("img[class*=img_assist_custom]").size()) {
+          // Image assist uses "+" signs for spaces which doesn't work for
+          // normal links.
+          if (settings.display_image_size != "original") {
+            orig_href = orig_href.replace(/\+/, " ");
+            href = $(child).attr("src").replace(new RegExp("\\.img_assist_custom-[0-9]+x[0-9]+"), ((settings.display_image_size === "")?settings.display_image_size:"."+ settings.display_image_size));
+            if (rel_type != "lightbox_ungrouped" && rel_type != "lightframe_ungrouped") {
+              rel = rel_type + "[node_images]";
+            }
+            if (lightframe) {
+              frame_href = orig_href + "/lightbox2";
+            }
+          }
+          else {
+            rewrite = 0;
+          }
+        }
+
+        // Handle "inline" images.
+        else if ($(child).attr("class").match("inline")) {
+          href = orig_href;
+        }
+
+        // Handle gallery2 block images.
+        else if ($(child).attr("class").match("ImageFrame_image") || $(child).attr("class").match("ImageFrame_none")) {
+          var thumb_id = parse_url(href, "g2_itemId");
+          var new_id = parse_url(orig_href, "g2_itemId");
+          if (new_id && thumb_id) {
+            var g2pattern = new RegExp("g2_itemId="+thumb_id);
+            var replacement = "g2_itemId="+ new_id;
+            href = href.replace(g2pattern, replacement);
+          }
+          rel = rel_type + "[gallery2]";
+          if ($(child).parents("div.block-gallery").attr("class")) {
+            id = $(child).parents("div.block-gallery").attr("id");
+            rel = rel_type + "["+ id +"]";
+          }
+          download = href;
+        }
+
+
+        // Set the href attribute.
+        else if (settings.image_node_sizes != '()' && !custom_class) {
+          if (settings.display_image_size != "original") {
+            href = $(child).attr("src").replace(new RegExp(settings.image_node_sizes), ((settings.display_image_size === "")?settings.display_image_size:"."+ settings.display_image_size)).replace(/(image\/view\/\d+)(\/[\w\-]*)/, ((settings.display_image_size === "")?"$1/_original":"$1/"+ settings.display_image_size));
+            if (rel_type != "lightbox_ungrouped" && rel_type != "lightframe_ungrouped") {
+              rel = rel_type + "[node_images]";
+              if ($(child).parents("div.block-multiblock,div.block-image").attr("class")) {
+                id = $(child).parents("div.block-multiblock,div.block-image").attr("id");
+                rel = rel_type + "["+ id +"]";
+              }
+            }
+            download = $(child).attr("src").replace(new RegExp(settings.image_node_sizes), "").replace(/(image\/view\/\d+)(\/[\w\-]*)/, "$1/_original");
+            if (lightframe) {
+              frame_href = orig_href + "/lightbox2";
+            }
+          }
+          else {
+            rewrite = 0;
+          }
+        }
+        // Modify the image url.
+        var img_title = $(child).attr("title");
+        if (!img_title) {
+          img_title = $(this).attr("title");
+          if (!img_title) {
+            img_title = $(child).attr("alt");
+          }
+          $(child).attr({title: img_title});
+        }
+        if (lightframe) {
+          href = frame_href;
+        }
+        if (rewrite) {
+          if (!custom_class) {
+            var title_link = "";
+            if (link_text.length) {
+              title_link = "<br /><br /><a href=\"" + orig_href + "\" id=\"lightbox2-node-link-text\" "+ link_target +" >"+ link_text + "</a>";
+            }
+            if (download_link_text.length && download) {
+              title_link = title_link + " - <a href=\"" + download + "\" id=\"lightbox2-download-link-text\" target=\"_blank\">" + download_link_text + "</a>";
+            }
+            rel = rel + "[" + img_title + title_link + "]";
+            $(this).attr({
+              rel: rel,
+              href: href
+            });
+          }
+          else {
+            if (rel_type != "lightbox_ungrouped" && rel_type != "lightframe_ungrouped") {
+              rel = rel_type + "[" + $(child).attr("class") + "]";
+              if ($(child).parents("div.block-image").attr("class")) {
+                id = $(child).parents("div.block-image").attr("id");
+                rel = rel_type + "["+ id +"]";
+              }
+            }
+            rel = rel + "[" + img_title + "]";
+            $(this).attr({
+              rel: rel,
+              href: orig_href
+            });
+          }
+        }
+      }
+    }
+
+  });
+}
+
+function lightbox2_image_nodes() {
+  var settings = Drupal.settings.lightbox2;
+
+  // Don't do it on the image assist popup selection screen.
+  var img_assist = document.getElementById("img_assist_thumbs");
+  if (!img_assist) {
+
+    // Select the enabled image types.
+    lightbox2_init_triggers(settings.trigger_lightbox_classes, "lightbox_ungrouped");
+    lightbox2_init_triggers(settings.custom_trigger_classes, settings.custom_class_handler, true);
+    lightbox2_init_triggers(settings.trigger_lightbox_group_classes, "lightbox");
+    lightbox2_init_triggers(settings.trigger_slideshow_classes, "lightshow");
+    lightbox2_init_triggers(settings.trigger_lightframe_classes, "lightframe_ungrouped");
+    lightbox2_init_triggers(settings.trigger_lightframe_group_classes, "lightframe");
+  }
+}
+
+Drupal.behaviors.initAutoLightbox = {
+  attach: function(context, settings) {
+    lightbox2_image_nodes();
+  }
+};
+
+//End jQuery block
+}(jQuery));
+;
+/* $Id: lightbox.js,v 1.5.2.6.2.136 2010/09/24 08:39:40 snpower Exp $ */
+
+/**
+ * jQuery Lightbox
+ * @author
+ *   Stella Power, <http://drupal.org/user/66894>
+ *
+ * Based on Lightbox v2.03.3 by Lokesh Dhakar
+ * <http://www.huddletogether.com/projects/lightbox2/>
+ * Also partially based on the jQuery Lightbox by Warren Krewenki
+ *   <http://warren.mesozen.com>
+ *
+ * Permission has been granted to Mark Ashmead & other Drupal Lightbox2 module
+ * maintainers to distribute this file via Drupal.org
+ * Under GPL license.
+ *
+ * Slideshow, iframe and video functionality added by Stella Power.
+ */
+
+var Lightbox;
+(function($) {
+Lightbox = {
+  auto_modal : false,
+  overlayOpacity : 0.8, // Controls transparency of shadow overlay.
+  overlayColor : '000', // Controls colour of shadow overlay.
+  disableCloseClick : true,
+  // Controls the order of the lightbox resizing animation sequence.
+  resizeSequence: 0, // 0: simultaneous, 1: width then height, 2: height then width.
+  resizeSpeed: 'normal', // Controls the speed of the lightbox resizing animation.
+  fadeInSpeed: 'normal', // Controls the speed of the image appearance.
+  slideDownSpeed: 'slow', // Controls the speed of the image details appearance.
+  minWidth: 240,
+  borderSize : 10,
+  boxColor : 'fff',
+  fontColor : '000',
+  topPosition : '',
+  infoHeight: 20,
+  alternative_layout : false,
+  imageArray : [],
+  imageNum : null,
+  total : 0,
+  activeImage : null,
+  inprogress : false,
+  disableResize : false,
+  disableZoom : false,
+  isZoomedIn : false,
+  rtl : false,
+  loopItems : false,
+  keysClose : ['c', 'x', 27],
+  keysPrevious : ['p', 37],
+  keysNext : ['n', 39],
+  keysZoom : ['z'],
+  keysPlayPause : [32],
+
+  // Slideshow options.
+  slideInterval : 5000, // In milliseconds.
+  showPlayPause : true,
+  autoStart : true,
+  autoExit : true,
+  pauseOnNextClick : false, // True to pause the slideshow when the "Next" button is clicked.
+  pauseOnPrevClick : true, // True to pause the slideshow when the "Prev" button is clicked.
+  slideIdArray : [],
+  slideIdCount : 0,
+  isSlideshow : false,
+  isPaused : false,
+  loopSlides : false,
+
+  // Iframe options.
+  isLightframe : false,
+  iframe_width : 600,
+  iframe_height : 400,
+  iframe_border : 1,
+
+  // Video and modal options.
+  enableVideo : false,
+  flvPlayer : '/flvplayer.swf',
+  flvFlashvars : '',
+  isModal : false,
+  isVideo : false,
+  videoId : false,
+  modalWidth : 400,
+  modalHeight : 400,
+  modalHTML : null,
+
+
+  // initialize()
+  // Constructor runs on completion of the DOM loading.
+  // The function inserts html at the bottom of the page which is used
+  // to display the shadow overlay and the image container.
+  initialize: function() {
+
+    var s = Drupal.settings.lightbox2;
+    Lightbox.overlayOpacity = s.overlay_opacity;
+    Lightbox.overlayColor = s.overlay_color;
+    Lightbox.disableCloseClick = s.disable_close_click;
+    Lightbox.resizeSequence = s.resize_sequence;
+    Lightbox.resizeSpeed = s.resize_speed;
+    Lightbox.fadeInSpeed = s.fade_in_speed;
+    Lightbox.slideDownSpeed = s.slide_down_speed;
+    Lightbox.borderSize = s.border_size;
+    Lightbox.boxColor = s.box_color;
+    Lightbox.fontColor = s.font_color;
+    Lightbox.topPosition = s.top_position;
+    Lightbox.rtl = s.rtl;
+    Lightbox.loopItems = s.loop_items;
+    Lightbox.keysClose = s.keys_close.split(" ");
+    Lightbox.keysPrevious = s.keys_previous.split(" ");
+    Lightbox.keysNext = s.keys_next.split(" ");
+    Lightbox.keysZoom = s.keys_zoom.split(" ");
+    Lightbox.keysPlayPause = s.keys_play_pause.split(" ");
+    Lightbox.disableResize = s.disable_resize;
+    Lightbox.disableZoom = s.disable_zoom;
+    Lightbox.slideInterval = s.slideshow_interval;
+    Lightbox.showPlayPause = s.show_play_pause;
+    Lightbox.showCaption = s.show_caption;
+    Lightbox.autoStart = s.slideshow_automatic_start;
+    Lightbox.autoExit = s.slideshow_automatic_exit;
+    Lightbox.pauseOnNextClick = s.pause_on_next_click;
+    Lightbox.pauseOnPrevClick = s.pause_on_previous_click;
+    Lightbox.loopSlides = s.loop_slides;
+    Lightbox.alternative_layout = s.use_alt_layout;
+    Lightbox.iframe_width = s.iframe_width;
+    Lightbox.iframe_height = s.iframe_height;
+    Lightbox.iframe_border = s.iframe_border;
+    Lightbox.enableVideo = s.enable_video;
+    if (s.enable_video) {
+      Lightbox.flvPlayer = s.flvPlayer;
+      Lightbox.flvFlashvars = s.flvFlashvars;
+    }
+
+    // Make the lightbox divs.
+    var layout_class = (s.use_alt_layout ? 'lightbox2-alt-layout' : 'lightbox2-orig-layout');
+    var output = '<div id="lightbox2-overlay" style="display: none;"></div>\
+      <div id="lightbox" style="display: none;" class="' + layout_class + '">\
+        <div id="outerImageContainer"></div>\
+        <div id="imageDataContainer" class="clearfix">\
+          <div id="imageData"></div>\
+        </div>\
+      </div>';
+    var loading = '<div id="loading"><a href="#" id="loadingLink"></a></div>';
+    var modal = '<div id="modalContainer" style="display: none;"></div>';
+    var frame = '<div id="frameContainer" style="display: none;"></div>';
+    var imageContainer = '<div id="imageContainer" style="display: none;"></div>';
+    var details = '<div id="imageDetails"></div>';
+    var bottomNav = '<div id="bottomNav"></div>';
+    var image = '<img id="lightboxImage" alt="" />';
+    var hoverNav = '<div id="hoverNav"><a id="prevLink" href="#"></a><a id="nextLink" href="#"></a></div>';
+    var frameNav = '<div id="frameHoverNav"><a id="framePrevLink" href="#"></a><a id="frameNextLink" href="#"></a></div>';
+    var hoverNav = '<div id="hoverNav"><a id="prevLink" title="' + Drupal.t('Previous') + '" href="#"></a><a id="nextLink" title="' + Drupal.t('Next') + '" href="#"></a></div>';
+    var frameNav = '<div id="frameHoverNav"><a id="framePrevLink" title="' + Drupal.t('Previous') + '" href="#"></a><a id="frameNextLink" title="' + Drupal.t('Next') + '" href="#"></a></div>';
+    var caption = '<span id="caption"></span>';
+    var numberDisplay = '<span id="numberDisplay"></span>';
+    var close = '<a id="bottomNavClose" title="' + Drupal.t('Close') + '" href="#"></a>';
+    var zoom = '<a id="bottomNavZoom" href="#"></a>';
+    var zoomOut = '<a id="bottomNavZoomOut" href="#"></a>';
+    var pause = '<a id="lightshowPause" title="' + Drupal.t('Pause Slideshow') + '" href="#" style="display: none;"></a>';
+    var play = '<a id="lightshowPlay" title="' + Drupal.t('Play Slideshow') + '" href="#" style="display: none;"></a>';
+
+    $("body").append(output);
+    $('#outerImageContainer').append(modal + frame + imageContainer + loading);
+    if (!s.use_alt_layout) {
+      $('#imageContainer').append(image + hoverNav);
+      $('#imageData').append(details + bottomNav);
+      $('#imageDetails').append(caption + numberDisplay);
+      $('#bottomNav').append(frameNav + close + zoom + zoomOut + pause + play);
+    }
+    else {
+      $('#outerImageContainer').append(bottomNav);
+      $('#imageContainer').append(image);
+      $('#bottomNav').append(close + zoom + zoomOut);
+      $('#imageData').append(hoverNav + details);
+      $('#imageDetails').append(caption + numberDisplay + pause + play);
+    }
+
+    // Setup onclick handlers.
+    if (Lightbox.disableCloseClick) {
+      $('#lightbox2-overlay').click(function() { Lightbox.end(); return false; } ).hide();
+    }
+    $('#loadingLink, #bottomNavClose').click(function() { Lightbox.end('forceClose'); return false; } );
+    $('#prevLink, #framePrevLink').click(function() { Lightbox.changeData(Lightbox.activeImage - 1); return false; } );
+    $('#nextLink, #frameNextLink').click(function() { Lightbox.changeData(Lightbox.activeImage + 1); return false; } );
+    $('#bottomNavZoom').click(function() { Lightbox.changeData(Lightbox.activeImage, true); return false; } );
+    $('#bottomNavZoomOut').click(function() { Lightbox.changeData(Lightbox.activeImage, false); return false; } );
+    $('#lightshowPause').click(function() { Lightbox.togglePlayPause("lightshowPause", "lightshowPlay"); return false; } );
+    $('#lightshowPlay').click(function() { Lightbox.togglePlayPause("lightshowPlay", "lightshowPause"); return false; } );
+
+    // Fix positioning.
+    $('#prevLink, #nextLink, #framePrevLink, #frameNextLink').css({ 'paddingTop': Lightbox.borderSize + 'px'});
+    $('#imageContainer, #frameContainer, #modalContainer').css({ 'padding': Lightbox.borderSize + 'px'});
+    $('#outerImageContainer, #imageDataContainer, #bottomNavClose').css({'backgroundColor': '#' + Lightbox.boxColor, 'color': '#'+Lightbox.fontColor});
+    if (Lightbox.alternative_layout) {
+      $('#bottomNavZoom, #bottomNavZoomOut').css({'bottom': Lightbox.borderSize + 'px', 'right': Lightbox.borderSize + 'px'});
+    }
+    else if (Lightbox.rtl == 1 && Drupal.settings.lightbox2.useragent.search('MSIE') !== -1) {
+      $('#bottomNavZoom, #bottomNavZoomOut').css({'left': '0px'});
+    }
+
+    // Force navigation links to always be displayed
+    if (s.force_show_nav) {
+      $('#prevLink, #nextLink').addClass("force_show_nav");
+    }
+
+  },
+
+  // initList()
+  // Loops through anchor tags looking for 'lightbox', 'lightshow' and
+  // 'lightframe', etc, references and applies onclick events to appropriate
+  // links. You can rerun after dynamically adding images w/ajax.
+  initList : function(context) {
+
+    if (context == undefined || context == null) {
+      context = document;
+    }
+
+    // Attach lightbox to any links with rel 'lightbox', 'lightshow' or
+    // 'lightframe', etc.
+    $("a[rel^='lightbox']:not(.lightbox-processed), area[rel^='lightbox']:not(.lightbox-processed)", context).addClass('lightbox-processed').click(function(e) {
+      if (Lightbox.disableCloseClick) {
+        $('#lightbox').unbind('click');
+        $('#lightbox').click(function() { Lightbox.end('forceClose'); } );
+      }
+      Lightbox.start(this, false, false, false, false);
+      if (e.preventDefault) { e.preventDefault(); }
+      return false;
+    });
+    $("a[rel^='lightshow']:not(.lightbox-processed), area[rel^='lightshow']:not(.lightbox-processed)", context).addClass('lightbox-processed').click(function(e) {
+      if (Lightbox.disableCloseClick) {
+        $('#lightbox').unbind('click');
+        $('#lightbox').click(function() { Lightbox.end('forceClose'); } );
+      }
+      Lightbox.start(this, true, false, false, false);
+      if (e.preventDefault) { e.preventDefault(); }
+      return false;
+    });
+    $("a[rel^='lightframe']:not(.lightbox-processed), area[rel^='lightframe']:not(.lightbox-processed)", context).addClass('lightbox-processed').click(function(e) {
+      if (Lightbox.disableCloseClick) {
+        $('#lightbox').unbind('click');
+        $('#lightbox').click(function() { Lightbox.end('forceClose'); } );
+      }
+      Lightbox.start(this, false, true, false, false);
+      if (e.preventDefault) { e.preventDefault(); }
+      return false;
+    });
+    if (Lightbox.enableVideo) {
+      $("a[rel^='lightvideo']:not(.lightbox-processed), area[rel^='lightvideo']:not(.lightbox-processed)", context).addClass('lightbox-processed').click(function(e) {
+        if (Lightbox.disableCloseClick) {
+          $('#lightbox').unbind('click');
+          $('#lightbox').click(function() { Lightbox.end('forceClose'); } );
+        }
+        Lightbox.start(this, false, false, true, false);
+        if (e.preventDefault) { e.preventDefault(); }
+        return false;
+      });
+    }
+    $("a[rel^='lightmodal']:not(.lightbox-processed), area[rel^='lightmodal']:not(.lightbox-processed)", context).addClass('lightbox-processed').click(function(e) {
+      $('#lightbox').unbind('click');
+      // Add classes from the link to the lightbox div - don't include lightbox-processed
+      $('#lightbox').addClass($(this).attr('class'));
+      $('#lightbox').removeClass('lightbox-processed');
+      Lightbox.start(this, false, false, false, true);
+      if (e.preventDefault) { e.preventDefault(); }
+      return false;
+    });
+    $("#lightboxAutoModal:not(.lightbox-processed)", context).addClass('lightbox-processed').click(function(e) {
+      Lightbox.auto_modal = true;
+      $('#lightbox').unbind('click');
+      Lightbox.start(this, false, false, false, true);
+      if (e.preventDefault) { e.preventDefault(); }
+      return false;
+    });
+  },
+
+  // start()
+  // Display overlay and lightbox. If image is part of a set, add siblings to
+  // imageArray.
+  start: function(imageLink, slideshow, lightframe, lightvideo, lightmodal) {
+
+    Lightbox.isPaused = !Lightbox.autoStart;
+
+    // Replaces hideSelectBoxes() and hideFlash() calls in original lightbox2.
+    Lightbox.toggleSelectsFlash('hide');
+
+    // Stretch overlay to fill page and fade in.
+    var arrayPageSize = Lightbox.getPageSize();
+    $("#lightbox2-overlay").hide().css({
+      'width': '100%',
+      'zIndex': '10090',
+      'height': arrayPageSize[1] + 'px',
+      'backgroundColor' : '#' + Lightbox.overlayColor
+    });
+    // Detect OS X FF2 opacity + flash issue.
+    if (lightvideo && this.detectMacFF2()) {
+      $("#lightbox2-overlay").removeClass("overlay_default");
+      $("#lightbox2-overlay").addClass("overlay_macff2");
+      $("#lightbox2-overlay").css({'opacity' : null});
+    }
+    else {
+      $("#lightbox2-overlay").removeClass("overlay_macff2");
+      $("#lightbox2-overlay").addClass("overlay_default");
+      $("#lightbox2-overlay").css({'opacity' : Lightbox.overlayOpacity});
+    }
+    $("#lightbox2-overlay").fadeIn(Lightbox.fadeInSpeed);
+
+
+    Lightbox.isSlideshow = slideshow;
+    Lightbox.isLightframe = lightframe;
+    Lightbox.isVideo = lightvideo;
+    Lightbox.isModal = lightmodal;
+    Lightbox.imageArray = [];
+    Lightbox.imageNum = 0;
+
+    var anchors = $(imageLink.tagName);
+    var anchor = null;
+    var rel_parts = Lightbox.parseRel(imageLink);
+    var rel = rel_parts["rel"];
+    var rel_group = rel_parts["group"];
+    var title = (rel_parts["title"] ? rel_parts["title"] : imageLink.title);
+    var rel_style = null;
+    var i = 0;
+
+    if (rel_parts["flashvars"]) {
+      Lightbox.flvFlashvars = Lightbox.flvFlashvars + '&' + rel_parts["flashvars"];
+    }
+
+    // Set the title for image alternative text.
+    var alt = imageLink.title;
+    if (!alt) {
+      var img = $(imageLink).find("img");
+      if (img && $(img).attr("alt")) {
+        alt = $(img).attr("alt");
+      }
+      else {
+        alt = title;
+      }
+    }
+
+    if ($(imageLink).attr('id') == 'lightboxAutoModal') {
+      rel_style = rel_parts["style"];
+      Lightbox.imageArray.push(['#lightboxAutoModal > *', title, alt, rel_style, 1]);
+    }
+    else {
+      // Handle lightbox images with no grouping.
+      if ((rel == 'lightbox' || rel == 'lightshow') && !rel_group) {
+        Lightbox.imageArray.push([imageLink.href, title, alt]);
+      }
+
+      // Handle other items with no grouping.
+      else if (!rel_group) {
+        rel_style = rel_parts["style"];
+        Lightbox.imageArray.push([imageLink.href, title, alt, rel_style]);
+      }
+
+      // Handle grouped items.
+      else {
+
+        // Loop through anchors and add them to imageArray.
+        for (i = 0; i < anchors.length; i++) {
+          anchor = anchors[i];
+          if (anchor.href && typeof(anchor.href) == "string" && $(anchor).attr('rel')) {
+            var rel_data = Lightbox.parseRel(anchor);
+            var anchor_title = (rel_data["title"] ? rel_data["title"] : anchor.title);
+            img_alt = anchor.title;
+            if (!img_alt) {
+              var anchor_img = $(anchor).find("img");
+              if (anchor_img && $(anchor_img).attr("alt")) {
+                img_alt = $(anchor_img).attr("alt");
+              }
+              else {
+                img_alt = title;
+              }
+            }
+            if (rel_data["rel"] == rel) {
+              if (rel_data["group"] == rel_group) {
+                if (Lightbox.isLightframe || Lightbox.isModal || Lightbox.isVideo) {
+                  rel_style = rel_data["style"];
+                }
+                Lightbox.imageArray.push([anchor.href, anchor_title, img_alt, rel_style]);
+              }
+            }
+          }
+        }
+
+        // Remove duplicates.
+        for (i = 0; i < Lightbox.imageArray.length; i++) {
+          for (j = Lightbox.imageArray.length-1; j > i; j--) {
+            if (Lightbox.imageArray[i][0] == Lightbox.imageArray[j][0]) {
+              Lightbox.imageArray.splice(j,1);
+            }
+          }
+        }
+        while (Lightbox.imageArray[Lightbox.imageNum][0] != imageLink.href) {
+          Lightbox.imageNum++;
+        }
+      }
+    }
+
+    if (Lightbox.isSlideshow && Lightbox.showPlayPause && Lightbox.isPaused) {
+      $('#lightshowPlay').show();
+      $('#lightshowPause').hide();
+    }
+
+    // Calculate top and left offset for the lightbox.
+    var arrayPageScroll = Lightbox.getPageScroll();
+    var lightboxTop = arrayPageScroll[1] + (Lightbox.topPosition == '' ? (arrayPageSize[3] / 10) : Lightbox.topPosition) * 1;
+    var lightboxLeft = arrayPageScroll[0];
+    $('#frameContainer, #modalContainer, #lightboxImage').hide();
+    $('#hoverNav, #prevLink, #nextLink, #frameHoverNav, #framePrevLink, #frameNextLink').hide();
+    $('#imageDataContainer, #numberDisplay, #bottomNavZoom, #bottomNavZoomOut').hide();
+    $('#outerImageContainer').css({'width': '250px', 'height': '250px'});
+    $('#lightbox').css({
+      'zIndex': '10500',
+      'top': lightboxTop + 'px',
+      'left': lightboxLeft + 'px'
+    }).show();
+
+    Lightbox.total = Lightbox.imageArray.length;
+    Lightbox.changeData(Lightbox.imageNum);
+  },
+
+  // changeData()
+  // Hide most elements and preload image in preparation for resizing image
+  // container.
+  changeData: function(imageNum, zoomIn) {
+
+    if (Lightbox.inprogress === false) {
+      if (Lightbox.total > 1 && ((Lightbox.isSlideshow && Lightbox.loopSlides) || (!Lightbox.isSlideshow && Lightbox.loopItems))) {
+        if (imageNum >= Lightbox.total) imageNum = 0;
+        if (imageNum < 0) imageNum = Lightbox.total - 1;
+      }
+
+      if (Lightbox.isSlideshow) {
+        for (var i = 0; i < Lightbox.slideIdCount; i++) {
+          window.clearTimeout(Lightbox.slideIdArray[i]);
+        }
+      }
+      Lightbox.inprogress = true;
+      Lightbox.activeImage = imageNum;
+
+      if (Lightbox.disableResize && !Lightbox.isSlideshow) {
+        zoomIn = true;
+      }
+      Lightbox.isZoomedIn = zoomIn;
+
+
+      // Hide elements during transition.
+      $('#loading').css({'zIndex': '10500'}).show();
+      if (!Lightbox.alternative_layout) {
+        $('#imageContainer').hide();
+      }
+      $('#frameContainer, #modalContainer, #lightboxImage').hide();
+      $('#hoverNav, #prevLink, #nextLink, #frameHoverNav, #framePrevLink, #frameNextLink').hide();
+      $('#imageDataContainer, #numberDisplay, #bottomNavZoom, #bottomNavZoomOut').hide();
+
+      // Preload image content, but not iframe pages.
+      if (!Lightbox.isLightframe && !Lightbox.isVideo && !Lightbox.isModal) {
+        $("#lightbox #imageDataContainer").removeClass('lightbox2-alt-layout-data');
+        imgPreloader = new Image();
+        imgPreloader.onerror = function() { Lightbox.imgNodeLoadingError(this); };
+
+        imgPreloader.onload = function() {
+          var photo = document.getElementById('lightboxImage');
+          photo.src = Lightbox.imageArray[Lightbox.activeImage][0];
+          photo.alt = Lightbox.imageArray[Lightbox.activeImage][2];
+
+          var imageWidth = imgPreloader.width;
+          var imageHeight = imgPreloader.height;
+
+          // Resize code.
+          var arrayPageSize = Lightbox.getPageSize();
+          var targ = { w:arrayPageSize[2] - (Lightbox.borderSize * 2), h:arrayPageSize[3] - (Lightbox.borderSize * 6) - (Lightbox.infoHeight * 4) - (arrayPageSize[3] / 10) };
+          var orig = { w:imgPreloader.width, h:imgPreloader.height };
+
+          // Image is very large, so show a smaller version of the larger image
+          // with zoom button.
+          if (zoomIn !== true) {
+            var ratio = 1.0; // Shrink image with the same aspect.
+            $('#bottomNavZoomOut, #bottomNavZoom').hide();
+            if ((orig.w >= targ.w || orig.h >= targ.h) && orig.h && orig.w) {
+              ratio = ((targ.w / orig.w) < (targ.h / orig.h)) ? targ.w / orig.w : targ.h / orig.h;
+              if (!Lightbox.disableZoom && !Lightbox.isSlideshow) {
+                $('#bottomNavZoom').css({'zIndex': '10500'}).show();
+              }
+            }
+
+            imageWidth  = Math.floor(orig.w * ratio);
+            imageHeight = Math.floor(orig.h * ratio);
+          }
+
+          else {
+            $('#bottomNavZoom').hide();
+            // Only display zoom out button if the image is zoomed in already.
+            if ((orig.w >= targ.w || orig.h >= targ.h) && orig.h && orig.w) {
+              // Only display zoom out button if not a slideshow and if the
+              // buttons aren't disabled.
+              if (!Lightbox.disableResize && Lightbox.isSlideshow === false && !Lightbox.disableZoom) {
+                $('#bottomNavZoomOut').css({'zIndex': '10500'}).show();
+              }
+            }
+          }
+
+          photo.style.width = (imageWidth) + 'px';
+          photo.style.height = (imageHeight) + 'px';
+          Lightbox.resizeContainer(imageWidth, imageHeight);
+
+          // Clear onLoad, IE behaves irratically with animated gifs otherwise.
+          imgPreloader.onload = function() {};
+        };
+
+        imgPreloader.src = Lightbox.imageArray[Lightbox.activeImage][0];
+        imgPreloader.alt = Lightbox.imageArray[Lightbox.activeImage][2];
+      }
+
+      // Set up frame size, etc.
+      else if (Lightbox.isLightframe) {
+        $("#lightbox #imageDataContainer").addClass('lightbox2-alt-layout-data');
+        var src = Lightbox.imageArray[Lightbox.activeImage][0];
+        $('#frameContainer').html('<iframe id="lightboxFrame" style="display: none;" src="'+src+'"></iframe>');
+
+        // Enable swf support in Gecko browsers.
+        if (Drupal.settings.lightbox2.useragent.search('Mozilla') !== -1 && src.indexOf('.swf') != -1) {
+          setTimeout(function () {
+            document.getElementById("lightboxFrame").src = Lightbox.imageArray[Lightbox.activeImage][0];
+          }, 1000);
+        }
+
+        if (!Lightbox.iframe_border) {
+          $('#lightboxFrame').css({'border': 'none'});
+          $('#lightboxFrame').attr('frameborder', '0');
+        }
+        var iframe = document.getElementById('lightboxFrame');
+        var iframeStyles = Lightbox.imageArray[Lightbox.activeImage][3];
+        iframe = Lightbox.setStyles(iframe, iframeStyles);
+        Lightbox.resizeContainer(parseInt(iframe.width, 10), parseInt(iframe.height, 10));
+      }
+      else if (Lightbox.isVideo || Lightbox.isModal) {
+        $("#lightbox #imageDataContainer").addClass('lightbox2-alt-layout-data');
+        var container = document.getElementById('modalContainer');
+        var modalStyles = Lightbox.imageArray[Lightbox.activeImage][3];
+        container = Lightbox.setStyles(container, modalStyles);
+        if (Lightbox.isVideo) {
+          Lightbox.modalHeight =  parseInt(container.height, 10) - 10;
+          Lightbox.modalWidth =  parseInt(container.width, 10) - 10;
+          Lightvideo.startVideo(Lightbox.imageArray[Lightbox.activeImage][0]);
+        }
+        Lightbox.resizeContainer(parseInt(container.width, 10), parseInt(container.height, 10));
+      }
+    }
+  },
+
+  // imgNodeLoadingError()
+  imgNodeLoadingError: function(image) {
+    var s = Drupal.settings.lightbox2;
+    var original_image = Lightbox.imageArray[Lightbox.activeImage][0];
+    if (s.display_image_size !== "") {
+      original_image = original_image.replace(new RegExp("."+s.display_image_size), "");
+    }
+    Lightbox.imageArray[Lightbox.activeImage][0] = original_image;
+    image.onerror = function() { Lightbox.imgLoadingError(image); };
+    image.src = original_image;
+  },
+
+  // imgLoadingError()
+  imgLoadingError: function(image) {
+    var s = Drupal.settings.lightbox2;
+    Lightbox.imageArray[Lightbox.activeImage][0] = s.default_image;
+    image.src = s.default_image;
+  },
+
+  // resizeContainer()
+  resizeContainer: function(imgWidth, imgHeight) {
+
+    imgWidth = (imgWidth < Lightbox.minWidth ? Lightbox.minWidth : imgWidth);
+
+    this.widthCurrent = $('#outerImageContainer').width();
+    this.heightCurrent = $('#outerImageContainer').height();
+
+    var widthNew = (imgWidth  + (Lightbox.borderSize * 2));
+    var heightNew = (imgHeight  + (Lightbox.borderSize * 2));
+
+    // Scalars based on change from old to new.
+    this.xScale = ( widthNew / this.widthCurrent) * 100;
+    this.yScale = ( heightNew / this.heightCurrent) * 100;
+
+    // Calculate size difference between new and old image, and resize if
+    // necessary.
+    wDiff = this.widthCurrent - widthNew;
+    hDiff = this.heightCurrent - heightNew;
+
+    $('#modalContainer').css({'width': imgWidth, 'height': imgHeight});
+    // Detect animation sequence.
+    if (Lightbox.resizeSequence) {
+      var animate1 = {width: widthNew};
+      var animate2 = {height: heightNew};
+      if (Lightbox.resizeSequence == 2) {
+        animate1 = {height: heightNew};
+        animate2 = {width: widthNew};
+      }
+      $('#outerImageContainer').animate(animate1, Lightbox.resizeSpeed).animate(animate2, Lightbox.resizeSpeed, 'linear', function() { Lightbox.showData(); });
+    }
+    // Simultaneous.
+    else {
+      $('#outerImageContainer').animate({'width': widthNew, 'height': heightNew}, Lightbox.resizeSpeed, 'linear', function() { Lightbox.showData(); });
+    }
+
+    // If new and old image are same size and no scaling transition is necessary
+    // do a quick pause to prevent image flicker.
+    if ((hDiff === 0) && (wDiff === 0)) {
+      if (Drupal.settings.lightbox2.useragent.search('MSIE') !== -1) {
+        Lightbox.pause(250);
+      }
+      else {
+        Lightbox.pause(100);
+      }
+    }
+
+    var s = Drupal.settings.lightbox2;
+    if (!s.use_alt_layout) {
+      $('#prevLink, #nextLink').css({'height': imgHeight + 'px'});
+    }
+    $('#imageDataContainer').css({'width': widthNew + 'px'});
+  },
+
+  // showData()
+  // Display image and begin preloading neighbors.
+  showData: function() {
+    $('#loading').hide();
+
+    if (Lightbox.isLightframe || Lightbox.isVideo || Lightbox.isModal) {
+      Lightbox.updateDetails();
+      if (Lightbox.isLightframe) {
+        $('#frameContainer').show();
+        if (Drupal.settings.lightbox2.useragent.search('Safari') !== -1 || Lightbox.fadeInSpeed === 0) {
+          $('#lightboxFrame').css({'zIndex': '10500'}).show();
+        }
+        else {
+          $('#lightboxFrame').css({'zIndex': '10500'}).fadeIn(Lightbox.fadeInSpeed);
+        }
+      }
+      else {
+        if (Lightbox.isVideo) {
+          $("#modalContainer").html(Lightbox.modalHTML).click(function(){return false;}).css('zIndex', '10500').show();
+        }
+        else {
+          var src = unescape(Lightbox.imageArray[Lightbox.activeImage][0]);
+          if (Lightbox.imageArray[Lightbox.activeImage][4]) {
+            $(src).appendTo("#modalContainer");
+            $('#modalContainer').css({'zIndex': '10500'}).show();
+          }
+          else {
+            // Use a callback to show the new image, otherwise you get flicker.
+            $("#modalContainer").hide().load(src, function () {$('#modalContainer').css({'zIndex': '10500'}).show();});
+          }
+          $('#modalContainer').unbind('click');
+        }
+        // This might be needed in the Lightframe section above.
+        //$('#modalContainer').css({'zIndex': '10500'}).show();
+      }
+    }
+
+    // Handle display of image content.
+    else {
+      $('#imageContainer').show();
+      if (Drupal.settings.lightbox2.useragent.search('Safari') !== -1 || Lightbox.fadeInSpeed === 0) {
+        $('#lightboxImage').css({'zIndex': '10500'}).show();
+      }
+      else {
+        $('#lightboxImage').css({'zIndex': '10500'}).fadeIn(Lightbox.fadeInSpeed);
+      }
+      Lightbox.updateDetails();
+      this.preloadNeighborImages();
+    }
+    Lightbox.inprogress = false;
+
+    // Slideshow specific stuff.
+    if (Lightbox.isSlideshow) {
+      if (!Lightbox.loopSlides && Lightbox.activeImage == (Lightbox.total - 1)) {
+        if (Lightbox.autoExit) {
+          Lightbox.slideIdArray[Lightbox.slideIdCount++] = setTimeout(function () {Lightbox.end('slideshow');}, Lightbox.slideInterval);
+        }
+      }
+      else {
+        if (!Lightbox.isPaused && Lightbox.total > 1) {
+          Lightbox.slideIdArray[Lightbox.slideIdCount++] = setTimeout(function () {Lightbox.changeData(Lightbox.activeImage + 1);}, Lightbox.slideInterval);
+        }
+      }
+      if (Lightbox.showPlayPause && Lightbox.total > 1 && !Lightbox.isPaused) {
+        $('#lightshowPause').show();
+        $('#lightshowPlay').hide();
+      }
+      else if (Lightbox.showPlayPause && Lightbox.total > 1) {
+        $('#lightshowPause').hide();
+        $('#lightshowPlay').show();
+      }
+    }
+
+    // Adjust the page overlay size.
+    var arrayPageSize = Lightbox.getPageSize();
+    var arrayPageScroll = Lightbox.getPageScroll();
+    var pageHeight = arrayPageSize[1];
+    if (Lightbox.isZoomedIn && arrayPageSize[1] > arrayPageSize[3]) {
+      var lightboxTop = (Lightbox.topPosition == '' ? (arrayPageSize[3] / 10) : Lightbox.topPosition) * 1;
+      pageHeight = pageHeight + arrayPageScroll[1] + lightboxTop;
+    }
+    $('#lightbox2-overlay').css({'height': pageHeight + 'px', 'width': arrayPageSize[0] + 'px'});
+
+    // Gecko browsers (e.g. Firefox, SeaMonkey, etc) don't handle pdfs as
+    // expected.
+    if (Drupal.settings.lightbox2.useragent.search('Mozilla') !== -1) {
+      if (Lightbox.imageArray[Lightbox.activeImage][0].indexOf(".pdf") != -1) {
+        setTimeout(function () {
+          document.getElementById("lightboxFrame").src = Lightbox.imageArray[Lightbox.activeImage][0];
+        }, 1000);
+      }
+    }
+  },
+
+  // updateDetails()
+  // Display caption, image number, and bottom nav.
+  updateDetails: function() {
+
+    $("#imageDataContainer").hide();
+
+    var s = Drupal.settings.lightbox2;
+
+    if (s.show_caption) {
+      var caption = Lightbox.filterXSS(Lightbox.imageArray[Lightbox.activeImage][1]);
+      if (!caption) caption = '';
+      $('#caption').html(caption).css({'zIndex': '10500'}).show();
+    }
+
+    // If image is part of set display 'Image x of x'.
+    var numberDisplay = null;
+    if (s.image_count && Lightbox.total > 1) {
+      var currentImage = Lightbox.activeImage + 1;
+      if (!Lightbox.isLightframe && !Lightbox.isModal && !Lightbox.isVideo) {
+        numberDisplay = s.image_count.replace(/\!current/, currentImage).replace(/\!total/, Lightbox.total);
+      }
+      else if (Lightbox.isVideo) {
+        numberDisplay = s.video_count.replace(/\!current/, currentImage).replace(/\!total/, Lightbox.total);
+      }
+      else {
+        numberDisplay = s.page_count.replace(/\!current/, currentImage).replace(/\!total/, Lightbox.total);
+      }
+      $('#numberDisplay').html(numberDisplay).css({'zIndex': '10500'}).show();
+    }
+    else {
+      $('#numberDisplay').hide();
+    }
+
+    $("#imageDataContainer").hide().slideDown(Lightbox.slideDownSpeed, function() {
+      $("#bottomNav").show();
+    });
+    if (Lightbox.rtl == 1) {
+      $("#bottomNav").css({'float': 'left'});
+    }
+    Lightbox.updateNav();
+  },
+
+  // updateNav()
+  // Display appropriate previous and next hover navigation.
+  updateNav: function() {
+
+    $('#hoverNav').css({'zIndex': '10500'}).show();
+    var prevLink = '#prevLink';
+    var nextLink = '#nextLink';
+
+    // Slideshow is separated as we need to show play / pause button.
+    if (Lightbox.isSlideshow) {
+      if ((Lightbox.total > 1 && Lightbox.loopSlides) || Lightbox.activeImage !== 0) {
+        $(prevLink).css({'zIndex': '10500'}).show().click(function() {
+          if (Lightbox.pauseOnPrevClick) {
+            Lightbox.togglePlayPause("lightshowPause", "lightshowPlay");
+          }
+          Lightbox.changeData(Lightbox.activeImage - 1); return false;
+        });
+      }
+      else {
+        $(prevLink).hide();
+      }
+
+      // If not last image in set, display next image button.
+      if ((Lightbox.total > 1 && Lightbox.loopSlides) || Lightbox.activeImage != (Lightbox.total - 1)) {
+        $(nextLink).css({'zIndex': '10500'}).show().click(function() {
+          if (Lightbox.pauseOnNextClick) {
+            Lightbox.togglePlayPause("lightshowPause", "lightshowPlay");
+          }
+          Lightbox.changeData(Lightbox.activeImage + 1); return false;
+        });
+      }
+      // Safari browsers need to have hide() called again.
+      else {
+        $(nextLink).hide();
+      }
+    }
+
+    // All other types of content.
+    else {
+
+      if ((Lightbox.isLightframe || Lightbox.isModal || Lightbox.isVideo) && !Lightbox.alternative_layout) {
+        $('#frameHoverNav').css({'zIndex': '10500'}).show();
+        $('#hoverNav').css({'zIndex': '10500'}).hide();
+        prevLink = '#framePrevLink';
+        nextLink = '#frameNextLink';
+      }
+
+      // If not first image in set, display prev image button.
+      if ((Lightbox.total > 1 && Lightbox.loopItems) || Lightbox.activeImage !== 0) {
+        // Unbind any other click handlers, otherwise this adds a new click handler
+        // each time the arrow is clicked.
+        $(prevLink).css({'zIndex': '10500'}).show().unbind().click(function() {
+          Lightbox.changeData(Lightbox.activeImage - 1); return false;
+        });
+      }
+      // Safari browsers need to have hide() called again.
+      else {
+        $(prevLink).hide();
+      }
+
+      // If not last image in set, display next image button.
+      if ((Lightbox.total > 1 && Lightbox.loopItems) || Lightbox.activeImage != (Lightbox.total - 1)) {
+        // Unbind any other click handlers, otherwise this adds a new click handler
+        // each time the arrow is clicked.
+        $(nextLink).css({'zIndex': '10500'}).show().unbind().click(function() {
+          Lightbox.changeData(Lightbox.activeImage + 1); return false;
+        });
+      }
+      // Safari browsers need to have hide() called again.
+      else {
+        $(nextLink).hide();
+      }
+    }
+
+    // Don't enable keyboard shortcuts so forms will work.
+    if (!Lightbox.isModal) {
+      this.enableKeyboardNav();
+    }
+  },
+
+
+  // enableKeyboardNav()
+  enableKeyboardNav: function() {
+    $(document).bind("keydown", this.keyboardAction);
+  },
+
+  // disableKeyboardNav()
+  disableKeyboardNav: function() {
+    $(document).unbind("keydown", this.keyboardAction);
+  },
+
+  // keyboardAction()
+  keyboardAction: function(e) {
+    if (e === null) { // IE.
+      keycode = event.keyCode;
+      escapeKey = 27;
+    }
+    else { // Mozilla.
+      keycode = e.keyCode;
+      escapeKey = e.DOM_VK_ESCAPE;
+    }
+
+    key = String.fromCharCode(keycode).toLowerCase();
+
+    // Close lightbox.
+    if (Lightbox.checkKey(Lightbox.keysClose, key, keycode)) {
+      Lightbox.end('forceClose');
+    }
+    // Display previous image (p, <-).
+    else if (Lightbox.checkKey(Lightbox.keysPrevious, key, keycode)) {
+      if ((Lightbox.total > 1 && ((Lightbox.isSlideshow && Lightbox.loopSlides) || (!Lightbox.isSlideshow && Lightbox.loopItems))) || Lightbox.activeImage !== 0) {
+        Lightbox.changeData(Lightbox.activeImage - 1);
+      }
+
+    }
+    // Display next image (n, ->).
+    else if (Lightbox.checkKey(Lightbox.keysNext, key, keycode)) {
+      if ((Lightbox.total > 1 && ((Lightbox.isSlideshow && Lightbox.loopSlides) || (!Lightbox.isSlideshow && Lightbox.loopItems))) || Lightbox.activeImage != (Lightbox.total - 1)) {
+        Lightbox.changeData(Lightbox.activeImage + 1);
+      }
+    }
+    // Zoom in.
+    else if (Lightbox.checkKey(Lightbox.keysZoom, key, keycode) && !Lightbox.disableResize && !Lightbox.disableZoom && !Lightbox.isSlideshow && !Lightbox.isLightframe) {
+      if (Lightbox.isZoomedIn) {
+        Lightbox.changeData(Lightbox.activeImage, false);
+      }
+      else if (!Lightbox.isZoomedIn) {
+        Lightbox.changeData(Lightbox.activeImage, true);
+      }
+      return false;
+    }
+    // Toggle play / pause (space).
+    else if (Lightbox.checkKey(Lightbox.keysPlayPause, key, keycode) && Lightbox.isSlideshow) {
+
+      if (Lightbox.isPaused) {
+        Lightbox.togglePlayPause("lightshowPlay", "lightshowPause");
+      }
+      else {
+        Lightbox.togglePlayPause("lightshowPause", "lightshowPlay");
+      }
+      return false;
+    }
+  },
+
+  preloadNeighborImages: function() {
+
+    if ((Lightbox.total - 1) > Lightbox.activeImage) {
+      preloadNextImage = new Image();
+      preloadNextImage.src = Lightbox.imageArray[Lightbox.activeImage + 1][0];
+    }
+    if (Lightbox.activeImage > 0) {
+      preloadPrevImage = new Image();
+      preloadPrevImage.src = Lightbox.imageArray[Lightbox.activeImage - 1][0];
+    }
+
+  },
+
+  end: function(caller) {
+    var closeClick = (caller == 'slideshow' ? false : true);
+    if (Lightbox.isSlideshow && Lightbox.isPaused && !closeClick) {
+      return;
+    }
+    // To prevent double clicks on navigation links.
+    if (Lightbox.inprogress === true && caller != 'forceClose') {
+      return;
+    }
+    Lightbox.disableKeyboardNav();
+    $('#lightbox').hide();
+    $("#lightbox2-overlay").fadeOut();
+    Lightbox.isPaused = true;
+    Lightbox.inprogress = false;
+    Lightbox.imageArray = [];
+    Lightbox.imageNum = 0;
+    // Replaces calls to showSelectBoxes() and showFlash() in original
+    // lightbox2.
+    Lightbox.toggleSelectsFlash('visible');
+    if (Lightbox.isSlideshow) {
+      for (var i = 0; i < Lightbox.slideIdCount; i++) {
+        window.clearTimeout(Lightbox.slideIdArray[i]);
+      }
+      $('#lightshowPause, #lightshowPlay').hide();
+    }
+    else if (Lightbox.isLightframe) {
+      $('#frameContainer').empty().hide();
+    }
+    else if (Lightbox.isVideo || Lightbox.isModal) {
+      if (!Lightbox.auto_modal) {
+        $('#modalContainer').hide().html("");
+      }
+      Lightbox.auto_modal = false;
+    }
+  },
+
+
+  // getPageScroll()
+  // Returns array with x,y page scroll values.
+  // Core code from - quirksmode.com.
+  getPageScroll : function() {
+
+    var xScroll, yScroll;
+
+    if (self.pageYOffset || self.pageXOffset) {
+      yScroll = self.pageYOffset;
+      xScroll = self.pageXOffset;
+    }
+    else if (document.documentElement && (document.documentElement.scrollTop || document.documentElement.scrollLeft)) {  // Explorer 6 Strict.
+      yScroll = document.documentElement.scrollTop;
+      xScroll = document.documentElement.scrollLeft;
+    }
+    else if (document.body) {// All other Explorers.
+      yScroll = document.body.scrollTop;
+      xScroll = document.body.scrollLeft;
+    }
+
+    arrayPageScroll = [xScroll,yScroll];
+    return arrayPageScroll;
+  },
+
+  // getPageSize()
+  // Returns array with page width, height and window width, height.
+  // Core code from - quirksmode.com.
+  // Edit for Firefox by pHaez.
+
+  getPageSize : function() {
+
+    var xScroll, yScroll;
+
+    if (window.innerHeight && window.scrollMaxY) {
+      xScroll = window.innerWidth + window.scrollMaxX;
+      yScroll = window.innerHeight + window.scrollMaxY;
+    }
+    else if (document.body.scrollHeight > document.body.offsetHeight) { // All but Explorer Mac.
+      xScroll = document.body.scrollWidth;
+      yScroll = document.body.scrollHeight;
+    }
+    else { // Explorer Mac...would also work in Explorer 6 Strict, Mozilla and Safari.
+      xScroll = document.body.offsetWidth;
+      yScroll = document.body.offsetHeight;
+    }
+
+    var windowWidth, windowHeight;
+
+    if (self.innerHeight) { // All except Explorer.
+      if (document.documentElement.clientWidth) {
+        windowWidth = document.documentElement.clientWidth;
+      }
+      else {
+        windowWidth = self.innerWidth;
+      }
+      windowHeight = self.innerHeight;
+    }
+    else if (document.documentElement && document.documentElement.clientHeight) { // Explorer 6 Strict Mode.
+      windowWidth = document.documentElement.clientWidth;
+      windowHeight = document.documentElement.clientHeight;
+    }
+    else if (document.body) { // Other Explorers.
+      windowWidth = document.body.clientWidth;
+      windowHeight = document.body.clientHeight;
+    }
+    // For small pages with total height less than height of the viewport.
+    if (yScroll < windowHeight) {
+      pageHeight = windowHeight;
+    }
+    else {
+      pageHeight = yScroll;
+    }
+    // For small pages with total width less than width of the viewport.
+    if (xScroll < windowWidth) {
+      pageWidth = xScroll;
+    }
+    else {
+      pageWidth = windowWidth;
+    }
+    arrayPageSize = new Array(pageWidth,pageHeight,windowWidth,windowHeight);
+    return arrayPageSize;
+  },
+
+
+  // pause(numberMillis)
+  pause : function(ms) {
+    var date = new Date();
+    var curDate = null;
+    do { curDate = new Date(); }
+    while (curDate - date < ms);
+  },
+
+
+  // toggleSelectsFlash()
+  // Hide / unhide select lists and flash objects as they appear above the
+  // lightbox in some browsers.
+  toggleSelectsFlash: function (state) {
+    if (state == 'visible') {
+      $("select.lightbox_hidden, embed.lightbox_hidden, object.lightbox_hidden").show();
+    }
+    else if (state == 'hide') {
+      $("select:visible, embed:visible, object:visible").not('#lightboxAutoModal select, #lightboxAutoModal embed, #lightboxAutoModal object').addClass("lightbox_hidden");
+      $("select.lightbox_hidden, embed.lightbox_hidden, object.lightbox_hidden").hide();
+    }
+  },
+
+
+  // parseRel()
+  parseRel: function (link) {
+    var parts = [];
+    parts["rel"] = parts["title"] = parts["group"] = parts["style"] = parts["flashvars"] = null;
+    if (!$(link).attr('rel')) return parts;
+    parts["rel"] = $(link).attr('rel').match(/\w+/)[0];
+
+    if ($(link).attr('rel').match(/\[(.*)\]/)) {
+      var info = $(link).attr('rel').match(/\[(.*?)\]/)[1].split('|');
+      parts["group"] = info[0];
+      parts["style"] = info[1];
+      if (parts["style"] != undefined && parts["style"].match(/flashvars:\s?(.*?);/)) {
+        parts["flashvars"] = parts["style"].match(/flashvars:\s?(.*?);/)[1];
+      }
+    }
+    if ($(link).attr('rel').match(/\[.*\]\[(.*)\]/)) {
+      parts["title"] = $(link).attr('rel').match(/\[.*\]\[(.*)\]/)[1];
+    }
+    return parts;
+  },
+
+  // setStyles()
+  setStyles: function(item, styles) {
+    item.width = Lightbox.iframe_width;
+    item.height = Lightbox.iframe_height;
+    item.scrolling = "auto";
+
+    if (!styles) return item;
+    var stylesArray = styles.split(';');
+    for (var i = 0; i< stylesArray.length; i++) {
+      if (stylesArray[i].indexOf('width:') >= 0) {
+        var w = stylesArray[i].replace('width:', '');
+        item.width = jQuery.trim(w);
+      }
+      else if (stylesArray[i].indexOf('height:') >= 0) {
+        var h = stylesArray[i].replace('height:', '');
+        item.height = jQuery.trim(h);
+      }
+      else if (stylesArray[i].indexOf('scrolling:') >= 0) {
+        var scrolling = stylesArray[i].replace('scrolling:', '');
+        item.scrolling = jQuery.trim(scrolling);
+      }
+      else if (stylesArray[i].indexOf('overflow:') >= 0) {
+        var overflow = stylesArray[i].replace('overflow:', '');
+        item.overflow = jQuery.trim(overflow);
+      }
+    }
+    return item;
+  },
+
+
+  // togglePlayPause()
+  // Hide the pause / play button as appropriate.  If pausing the slideshow also
+  // clear the timers, otherwise move onto the next image.
+  togglePlayPause: function(hideId, showId) {
+    if (Lightbox.isSlideshow && hideId == "lightshowPause") {
+      for (var i = 0; i < Lightbox.slideIdCount; i++) {
+        window.clearTimeout(Lightbox.slideIdArray[i]);
+      }
+    }
+    $('#' + hideId).hide();
+    $('#' + showId).show();
+
+    if (hideId == "lightshowPlay") {
+      Lightbox.isPaused = false;
+      if (!Lightbox.loopSlides && Lightbox.activeImage == (Lightbox.total - 1)) {
+        Lightbox.end();
+      }
+      else if (Lightbox.total > 1) {
+        Lightbox.changeData(Lightbox.activeImage + 1);
+      }
+    }
+    else {
+      Lightbox.isPaused = true;
+    }
+  },
+
+  triggerLightbox: function (rel_type, rel_group) {
+    if (rel_type.length) {
+      if (rel_group && rel_group.length) {
+        $("a[rel^='" + rel_type +"\[" + rel_group + "\]'], area[rel^='" + rel_type +"\[" + rel_group + "\]']").eq(0).trigger("click");
+      }
+      else {
+        $("a[rel^='" + rel_type +"'], area[rel^='" + rel_type +"']").eq(0).trigger("click");
+      }
+    }
+  },
+
+  detectMacFF2: function() {
+    var ua = navigator.userAgent.toLowerCase();
+    if (/firefox[\/\s](\d+\.\d+)/.test(ua)) {
+      var ffversion = new Number(RegExp.$1);
+      if (ffversion < 3 && ua.indexOf('mac') != -1) {
+        return true;
+      }
+    }
+    return false;
+  },
+
+  checkKey: function(keys, key, code) {
+    return (jQuery.inArray(key, keys) != -1 || jQuery.inArray(String(code), keys) != -1);
+  },
+
+  filterXSS: function(str, allowed_tags) {
+    var output = "";
+    var prefix = Drupal.settings.pathPrefix;
+    if (!prefix) prefix = '';
+    $.ajax({
+      url: Drupal.settings.basePath + prefix + '?q=system/lightbox2/filter-xss',
+      data: {
+        'string' : str,
+        'allowed_tags' : allowed_tags
+      },
+      type: "POST",
+      async: false,
+      dataType:  "json",
+      success: function(data) {
+        output = data;
+      }
+    });
+    return output;
+  }
+
+};
+
+// Initialize the lightbox.
+Drupal.behaviors.initLightbox = {
+  attach: function(context) {
+
+  $('body:not(.lightbox-processed)', context).addClass('lightbox-processed').each(function() {
+    Lightbox.initialize();
+    return false; // Break the each loop.
+  });
+
+  // Attach lightbox to any links with lightbox rels.
+  Lightbox.initList(context);
+  $('#lightboxAutoModal', context).triggerHandler('click');
+  }
+};
+})(jQuery);
+;
+(function($) {
+
+// Check if this file has already been loaded.
+if (typeof Drupal.wysiwygAttach !== 'undefined') {
+  return;
+}
+
+// Keeps track of editor status during AJAX operations, active format and more.
+// Always use getFieldInfo() to get a valid reference to the correct data.
+var _fieldInfoStorage = {};
+// Keeps track of information relevant to each format, such as editor settings.
+// Always use getFormatInfo() to get a reference to a format's data.
+var _formatInfoStorage = {};
+
+// Keeps track of global and per format plugin configurations.
+// Always use getPluginInfo() tog get a valid reference to the correct data.
+var _pluginInfoStorage = {'global': {'drupal': {}, 'native': {}}};
+
+// Keeps track of private instance information.
+var _internalInstances = {};
+
+// Keeps track of initialized editor libraries.
+var _initializedLibraries = {};
+
+// Keeps a map between format selectboxes and fields.
+var _selectToField = {};
+
+/**
+ * Returns field specific editor data.
+ *
+ * @throws Error
+ *   Exception thrown if data for an unknown field is requested.
+ *   Summary fields are expected to use the same data as the main field.
+ *
+ * If a field id contains the delimiter '--', anything after that is dropped and
+ * the remainder is assumed to be the id of an original field replaced by an
+ * AJAX operation, due to how Drupal generates unique ids.
+ * @see drupal_html_id()
+ *
+ * Do not modify the returned object unless you really know what you're doing.
+ * No external code should need access to this, and it may likely change in the
+ * future.
+ *
+ * @param fieldId
+ *   The id of the field to get data for.
+ *
+ * @returns
+ *   A reference to an object with the following properties:
+ *   - activeFormat: A string with the active format id.
+ *   - enabled: A boolean, true if the editor is attached.
+ *   - formats: An object with one sub-object for each available format, holding
+ *     format specific state data for this field.
+ *   - summary: An optional string with the id of a corresponding summary field.
+ *   - trigger: A string with the id of the format selector for the field.
+ *   - getFormatInfo: Shortcut method to getFormatInfo(fieldInfo.activeFormat).
+ */
+function getFieldInfo(fieldId) {
+  if (_fieldInfoStorage[fieldId]) {
+    return _fieldInfoStorage[fieldId];
+  }
+  var baseFieldId = (fieldId.indexOf('--') === -1 ? fieldId : fieldId.substr(0, fieldId.indexOf('--')));
+  if (_fieldInfoStorage[baseFieldId]) {
+    return _fieldInfoStorage[baseFieldId];
+  }
+  throw new Error('Wysiwyg module has no information about field "' + fieldId + '"');
+}
+
+/**
+ * Returns format specific editor data.
+ *
+ * Do not modify the returned object unless you really know what you're doing.
+ * No external code should need access to this, and it may likely change in the
+ * future.
+ *
+ * @param formatId
+ *   The id of a format to get data for.
+ *
+ * @returns
+ *   A reference to an object with the following properties:
+ *   - editor: A string with the id of the editor attached to the format.
+ *     'none' if no editor profile is associated with the format.
+ *   - enabled: True if the editor is active.
+ *   - toggle: True if the editor can be toggled on/off by the user.
+ *   - editorSettings: A structure holding editor settings for this format.
+ *   - getPluginInfo: Shortcut method to get plugin config for the this format.
+ */
+function getFormatInfo(formatId) {
+  if (_formatInfoStorage[formatId]) {
+    return _formatInfoStorage[formatId];
+  }
+  return {
+    editor: 'none',
+    getPluginInfo: function () {
+      return getPluginInfo(formatId);
+    }
+  };
+}
+
+/**
+ * Returns plugin configuration for a specific format, or the global values.
+ *
+ * @param formatId
+ *   The id of a format to get data for, or 'global' to get data common to all
+ *   formats and editors. Use 'global:editorname' to limit it to one editor.
+ *
+ * @return
+ *   The returned object will have the sub-objects 'drupal' and 'native', each
+ *   with properties matching names of plugins.
+ *   Global data for Drupal (cross-editor) plugins will have the following keys:
+ *   - title: A human readable name for the button.
+ *   - internalName: The unique name of a native plugin wrapper, used in editor
+ *     profiles and when registering the plugin with the editor API to avoid
+ *     possible id conflicts with native plugins.
+ *   - css: A stylesheet needed by the plugin.
+ *   - icon path: The path where button icons are stored.
+ *   - path: The path to the plugin's main folder.
+ *   - buttons: An object with button data, keyed by name with the properties:
+ *     - description: A human readable string describing the button's function.
+ *     - title: A human readable string with the name of the button.
+ *     - icon: An object with one or more of the following properties:
+ *       - src: An absolute (begins with '/') or relative path to the icon.
+ *       - path: An absolute path to a folder containing the button.
+ *
+ *   When formatId matched a format with an assigned editor, values for plugins
+ *   match the return value of the editor integration's [proxy] plugin settings
+ *   callbacks.
+ *
+ *   @see Drupal.wysiwyg.utilities.getPluginInfo()
+ *   @see Drupal.wyswiyg.utilities.extractButtonSettings()
+ */
+function getPluginInfo(formatId) {
+  var match, editor;
+  if ((match = formatId.match(/^global:(\w+)$/))) {
+    formatId = 'global';
+    editor = match[1];
+  }
+  if (!_pluginInfoStorage[formatId]) {
+    return {};
+  }
+  if (formatId === 'global' && typeof editor !== 'undefined') {
+    return { 'drupal': _pluginInfoStorage.global.drupal, 'native': (_pluginInfoStorage.global['native'][editor]) };
+  }
+  return _pluginInfoStorage[formatId];
+}
+
+/**
+ * Attach editors to input formats and target elements (f.e. textareas).
+ *
+ * This behavior searches for input format selectors and formatting guidelines
+ * that have been preprocessed by Wysiwyg API. All CSS classes of those elements
+ * with the prefix 'wysiwyg-' are parsed into input format parameters, defining
+ * the input format, configured editor, target element id, and variable other
+ * properties, which are passed to the attach/detach hooks of the corresponding
+ * editor.
+ *
+ * Furthermore, an "enable/disable rich-text" toggle link is added after the
+ * target element to allow users to alter its contents in plain text.
+ *
+ * This is executed once, while editor attach/detach hooks can be invoked
+ * multiple times.
+ *
+ * @param context
+ *   A DOM element, supplied by Drupal.attachBehaviors().
+ */
+Drupal.behaviors.attachWysiwyg = {
+  attach: function (context, settings) {
+    // This breaks in Konqueror. Prevent it from running.
+    if (/KDE/.test(navigator.vendor)) {
+      return;
+    }
+    var wysiwygs = $('.wysiwyg:input', context);
+    if (!wysiwygs.length) {
+      // No new fields, nothing to update.
+      return;
+    }
+    updateInternalState(settings.wysiwyg, context);
+    wysiwygs.once('wysiwyg', function () {
+      // Skip processing if the element is unknown or does not exist in this
+      // document. Can happen after a form was removed but Drupal.ajax keeps a
+      // lingering reference to the form and calls Drupal.attachBehaviors().
+      var $this = $('#' + this.id, document);
+      if (!$this.length) {
+        return;
+      }
+      // Directly attach this editor, if the input format is enabled or there is
+      // only one input format at all.
+      Drupal.wysiwygAttach(context, this.id);
+    })
+    .closest('form').submit(function (event) {
+      // Detach any editor when the containing form is submitted.
+      // Do not detach if the event was cancelled.
+      if (event.isDefaultPrevented()) {
+        return;
+      }
+      var form = this;
+      $('.wysiwyg:input', this).each(function () {
+        Drupal.wysiwygDetach(form, this.id, 'serialize');
+      });
+    });
+  },
+
+  detach: function (context, settings, trigger) {
+    var wysiwygs;
+    // The 'serialize' trigger indicates that we should simply update the
+    // underlying element with the new text, without destroying the editor.
+    if (trigger == 'serialize') {
+      // Removing the wysiwyg-processed class guarantees that the editor will
+      // be reattached. Only do this if we're planning to destroy the editor.
+      wysiwygs = $('.wysiwyg-processed:input', context);
+    }
+    else {
+      wysiwygs = $('.wysiwyg:input', context).removeOnce('wysiwyg');
+    }
+    wysiwygs.each(function () {
+      Drupal.wysiwygDetach(context, this.id, trigger);
+      if (trigger === 'unload') {
+        // Delete the instance in case the field is removed. This is safe since
+        // detaching with the unload trigger is reverts to the 'none' "editor".
+        delete _internalInstances[this.id];
+        delete Drupal.wysiwyg.instances[this.id];
+      }
+    });
+  }
+};
+
+/**
+ * Attach an editor to a target element.
+ *
+ * Detaches any existing instance for the field before attaching a new instance
+ * based on the current state of the field. Editor settings and state
+ * information is fetched based on the element id and get cloned first, so they
+ * cannot be overridden. After attaching the editor, the toggle link is shown
+ * again, except in case we are attaching no editor.
+ *
+ * Also attaches editors to the summary field, if available.
+ *
+ * @param context
+ *   A DOM element, supplied by Drupal.attachBehaviors().
+ * @param fieldId
+ *   The id of an element to attach an editor to.
+ */
+Drupal.wysiwygAttach = function(context, fieldId) {
+  var fieldInfo = getFieldInfo(fieldId),
+    doSummary = (fieldInfo.summary && (!fieldInfo.formats[fieldInfo.activeFormat] || !fieldInfo.formats[fieldInfo.activeFormat].skip_summary));
+  // Detach any previous editor instance if enabled, else remove the grippie.
+  detachFromField(fieldId, context, 'unload');
+  var wasSummary = !!_internalInstances[fieldInfo.summary];
+  if (doSummary || wasSummary) {
+    detachFromField(fieldId, context, 'unload', {summary: true});
+  }
+  // Store this field id, so (external) plugins can use it.
+  // @todo Wrong point in time. Probably can only supported by editors which
+  //   support an onFocus() or similar event.
+  Drupal.wysiwyg.activeId = fieldId;
+  // Attach or update toggle link, if enabled.
+  Drupal.wysiwygAttachToggleLink(context, fieldId);
+  // Attach to main field.
+  attachToField(fieldId, context);
+  // Attach to summary field.
+  if (doSummary || wasSummary) {
+    // If the summary wrapper is visible, attach immediately.
+    if ($('#' + fieldInfo.summary).parents('.text-summary-wrapper').is(':visible')) {
+      attachToField(fieldId, context, {summary: true, forceDisabled: !doSummary});
+    }
+    else {
+      // Attach an instance of the 'none' editor to have consistency while the
+      // summary is hidden, then switch to a real editor instance when shown.
+      attachToField(fieldId, context, {summary: true, forceDisabled: true});
+      // Unbind any existing click handler to avoid double toggling.
+      $('#' + fieldId).parents('.text-format-wrapper').find('.link-edit-summary').closest('.field-edit-link').unbind('click.wysiwyg').bind('click.wysiwyg', function () {
+        detachFromField(fieldId, context, 'unload', {summary: true});
+        attachToField(fieldId, context, {summary: true, forceDisabled: !doSummary});
+        $(this).unbind('click.wysiwyg');
+      });
+    }
+  }
+};
+
+/**
+ * The public API exposed for an editor-enabled field.
+ *
+ * Properties should be treated as read-only state and changing them will not
+ * have any effect on how the instance behaves.
+ *
+ * Note: The attach() and detach() methods are not part of the public API and
+ * should not be called directly to avoid synchronization issues.
+ * Use Drupal.wysiwygAttach() and Drupal.wysiwygDetach() to activate or
+ * deactivate editor instances. Externally switching the active editor is not
+ * supported other than changing the format using the select element.
+ */
+function WysiwygInstance(internalInstance) {
+  // The id of the field the instance manipulates.
+  this.field = internalInstance.field;
+  // The internal name of the attached editor.
+  this.editor = internalInstance.editor;
+  // If the editor is currently enabled or not.
+  this['status'] = internalInstance['status'];
+  // The id of the text format the editor is attached to.
+  this.format = internalInstance.format;
+  // If the field is resizable without an editor attached.
+  this.resizable = internalInstance.resizable;
+
+  // Methods below here redirect to the 'none' editor which handles plain text
+  // fields when the editor is disabled.
+
+   /**
+    * Insert content at the cursor position.
+    *
+    * @param content
+    *   An HTML markup string.
+    */
+  this.insert = function (content) {
+    return internalInstance['status'] ? internalInstance.insert(content) : Drupal.wysiwyg.editor.instance.none.insert.call(internalInstance, content);
+  }
+
+  /**
+   * Get all content from the editor.
+   *
+   * @return
+   *   An HTML markup string.
+   */
+  this.getContent = function () {
+    return internalInstance['status'] ? internalInstance.getContent() : Drupal.wysiwyg.editor.instance.none.getContent.call(internalInstance);
+  }
+
+  /**
+   * Replace all content in the editor.
+   *
+   * @param content
+   *   An HTML markup string.
+   */
+  this.setContent = function (content) {
+    return internalInstance['status'] ? internalInstance.setContent(content) : Drupal.wysiwyg.editor.instance.none.setContent.call(internalInstance, content);
+  }
+
+  /**
+   * Check if the editor is in fullscreen mode.
+   *
+   * @return bool
+   *  True if the editor is considered to be in fullscreen mode.
+   */
+  this.isFullscreen = function (content) {
+    return internalInstance['status'] && $.isFunction(internalInstance.isFullscreen) ? internalInstance.isFullscreen() : false;
+  }
+
+  // @todo The methods below only work for TinyMCE, deprecate?
+
+  /**
+   * Open a native editor dialog.
+   *
+   * Use of this method i not recommended due to limited editor support.
+   *
+   * @param dialog
+   *   An object with dialog settings. Keys used:
+   *   - url: The url of the dialog template.
+   *   - width: Width in pixels.
+   *   - height: Height in pixels.
+   */
+  this.openDialog = function (dialog, params) {
+    if ($.isFunction(internalInstance.openDialog)) {
+      return internalInstance.openDialog(dialog, params)
+    }
+  }
+
+  /**
+   * Close an opened dialog.
+   *
+   * @param dialog
+   *   Same options as for opening a dialog.
+   */
+  this.closeDialog = function (dialog) {
+    if ($.isFunction(internalInstance.closeDialog)) {
+      return internalInstance.closeDialog(dialog)
+    }
+  }
+}
+
+/**
+ * The private base for editor instances.
+ *
+ * An instance of this object is used as the context for all calls into the
+ * editor instances (including attach() and detach() when only one instance is
+ * asked to detach).
+ *
+ * Anything added to Drupal.wysiwyg.editor.instance[editorName] is cloned into
+ * an instance of this function.
+ *
+ * Editor state parameters are cloned into the instance after that.
+ */
+function WysiwygInternalInstance(params) {
+  $.extend(true, this, Drupal.wysiwyg.editor.instance[params.editor]);
+  $.extend(true, this, params);
+  this.pluginInfo = {
+    'global': getPluginInfo('global:' + params.editor),
+    'instances': getPluginInfo(params.format)
+  };
+  // Keep track of the public face to keep it synced.
+  this.publicInstance = new WysiwygInstance(this);
+}
+
+/**
+ * Updates internal settings and state caches with new information.
+ *
+ * Attaches selection change handler to format selector to track state changes.
+ *
+ * @param settings
+ *   A structure like Drupal.settigns.wysiwyg.
+ * @param context
+ *   The context given from Drupal.attachBehaviors().
+ */
+function updateInternalState(settings, context) {
+  var pluginData = settings.plugins;
+  for (var plugin in pluginData.drupal) {
+    if (!(plugin in _pluginInfoStorage.global.drupal)) {
+      _pluginInfoStorage.global.drupal[plugin] = pluginData.drupal[plugin];
+    }
+  }
+  // To make sure we don't rely on Drupal.settings, uncomment these for testing.
+  //pluginData.drupal = {};
+  for (var editorId in pluginData['native']) {
+    for (var plugin in pluginData['native'][editorId]) {
+      _pluginInfoStorage.global['native'][editorId] = (_pluginInfoStorage.global['native'][editorId] || {});
+      if (!(plugin in _pluginInfoStorage.global['native'][editorId])) {
+        _pluginInfoStorage.global['native'][editorId][plugin] = pluginData['native'][editorId][plugin];
+      }
+    }
+  }
+  //pluginData['native'] = {};
+  for (var fmatId in pluginData) {
+    if (fmatId.substr(0, 6) !== 'format') {
+      continue;
+    }
+    _pluginInfoStorage[fmatId] = (_pluginInfoStorage[fmatId] || {'drupal': {}, 'native': {}});
+    for (var plugin in pluginData[fmatId].drupal) {
+      if (!(plugin in _pluginInfoStorage[fmatId].drupal)) {
+        _pluginInfoStorage[fmatId].drupal[plugin] = pluginData[fmatId].drupal[plugin];
+      }
+    }
+    for (var plugin in pluginData[fmatId]['native']) {
+      if (!(plugin in _pluginInfoStorage[fmatId]['native'])) {
+        _pluginInfoStorage[fmatId]['native'][plugin] = pluginData[fmatId]['native'][plugin];
+      }
+    }
+    delete pluginData[fmatId];
+  }
+  // Build the cache of format/profile settings.
+  for (var editor in settings.configs) {
+    if (!settings.configs.hasOwnProperty(editor)) {
+      continue;
+    }
+    for (var format in settings.configs[editor]) {
+      if (_formatInfoStorage[format] || !settings.configs[editor].hasOwnProperty(format)) {
+        continue;
+      }
+      _formatInfoStorage[format] = {
+        editor: editor,
+        toggle: true, // Overridden by triggers.
+        editorSettings: processObjectTypes(settings.configs[editor][format])
+      };
+    }
+    // Initialize editor libraries if not already done.
+    if (!_initializedLibraries[editor] && typeof Drupal.wysiwyg.editor.init[editor] === 'function') {
+      // Clone, so original settings are not overwritten.
+      Drupal.wysiwyg.editor.init[editor](jQuery.extend(true, {}, settings.configs[editor]), getPluginInfo('global:' + editor));
+      _initializedLibraries[editor] = true;
+    }
+    // Update libraries, in case new plugins etc have not been initialized yet.
+    else if (typeof Drupal.wysiwyg.editor.update[editor] === 'function') {
+      Drupal.wysiwyg.editor.update[editor](jQuery.extend(true, {}, settings.configs[editor]), getPluginInfo('global:' + editor));
+    }
+  }
+  //settings.configs = {};
+  for (var triggerId in settings.triggers) {
+    var trigger = settings.triggers[triggerId];
+    var fieldId = trigger.field;
+    var baseFieldId = (fieldId.indexOf('--') === -1 ? fieldId : fieldId.substr(0, fieldId.indexOf('--')));
+    var fieldInfo = null;
+    if ($('#' + triggerId, context).length === 0) {
+      // Skip fields which may have been removed or are not in this context.
+      continue;
+    }
+    if (!(fieldInfo = _fieldInfoStorage[baseFieldId])) {
+      fieldInfo = _fieldInfoStorage[baseFieldId] = {
+        formats: {},
+        select: trigger.select,
+        resizable: trigger.resizable,
+        summary: trigger.summary,
+        getFormatInfo: function () {
+          if (this.select) {
+            this.activeFormat = 'format' + $('#' + this.select + ':input').val();
+          }
+          return getFormatInfo(this.activeFormat);
+        }
+        // 'activeFormat' and 'enabled' added below.
+      };
+    }
+    for (var format in trigger) {
+      if (format.indexOf('format') != 0 || fieldInfo.formats[format]) {
+        continue;
+      }
+      fieldInfo.formats[format] = {
+        'enabled': trigger[format].status
+      };
+      if (!_formatInfoStorage[format]) {
+        _formatInfoStorage[format] = {
+          editor: trigger[format].editor,
+          editorSettings: {},
+          getPluginInfo: function () {
+            return getPluginInfo(formatId);
+          }
+        };
+      }
+      // Always update these since they are stored as state.
+      _formatInfoStorage[format].toggle = trigger[format].toggle;
+      if (trigger[format].skip_summary) {
+        fieldInfo.formats[format].skip_summary = true;
+      }
+    }
+    var $selectbox = null;
+    // Always update these since Drupal generates new ids on AJAX calls.
+    fieldInfo.summary = trigger.summary;
+    if (trigger.select) {
+      _selectToField[trigger.select.replace(/--\d+$/,'')] = trigger.field;
+      fieldInfo.select = trigger.select;
+      // Specifically target input elements in case selectbox wrappers have
+      // hidden the real element and cloned its attributes.
+      $selectbox = $('#' + trigger.select + ':input', context).filter('select');
+      // Attach onChange handlers to input format selector elements.
+      $selectbox.unbind('change.wysiwyg').bind('change.wysiwyg', formatChanged);
+    }
+    // Always update the active format to ensure the righ profile is used if a
+    // field was removed and gets re-added and the instance was left behind.
+    fieldInfo.activeFormat = 'format' + ($selectbox ? $selectbox.val() : trigger.activeFormat);
+    fieldInfo.enabled = fieldInfo.formats[fieldInfo.activeFormat] && fieldInfo.formats[fieldInfo.activeFormat].enabled;
+  }
+  //settings.triggers = {};
+}
+
+/**
+ * Helper to prepare and attach an editor for a single field.
+ *
+ * Creates the 'instance' object under Drupal.wysiwyg.instances[fieldId].
+ *
+ * @param mainFieldId
+ *  The id of the field's main element, for fetching field info.
+ * @param context
+ *   A DOM element, supplied by Drupal.attachBehaviors().
+ * @param params
+ *   An optional object for overriding state information for the editor with the
+ *   following properties:
+ *   - 'summary': Set to true to indicate to attach to the summary instead of
+ *     the main element. Defaults to false.
+ *   - 'forceDisabled': Set to true to override the current state of the field
+ *     and assume it is disabled. Useful for hidden summary instances.
+ *
+ * @see Drupal.wysiwygAttach()
+ */
+function attachToField(mainFieldId, context, params) {
+  params = params || {};
+  var fieldInfo = getFieldInfo(mainFieldId);
+  var fieldId = (params.summary ? fieldInfo.summary : mainFieldId);
+  var formatInfo = fieldInfo.getFormatInfo();
+  // If the editor isn't active, attach default behaviors instead.
+  var enabled = (fieldInfo.enabled && !params.forceDisabled);
+  var editor = (enabled ? formatInfo.editor : 'none');
+  // Settings are deep merged (cloned) to prevent editor implementations from
+  // permanently modifying them while attaching.
+  var clonedSettings = (enabled ? jQuery.extend(true, {}, formatInfo.editorSettings) : {});
+  // (Re-)initialize field instance.
+  var stateParams = {
+    field: fieldId,
+    editor: formatInfo.editor,
+    'status': enabled,
+    format: fieldInfo.activeFormat,
+    resizable: fieldInfo.resizable
+  };
+  var internalInstance = new WysiwygInternalInstance(stateParams);
+  _internalInstances[fieldId] = internalInstance;
+  Drupal.wysiwyg.instances[fieldId] = internalInstance.publicInstance;
+  // Attach editor, if enabled by default or last state was enabled.
+  Drupal.wysiwyg.editor.attach[editor].call(internalInstance, context, stateParams, clonedSettings);
+}
+
+/**
+ * Detach all editors from a target element.
+ *
+ * Ensures Drupal's original textfield resize functionality is restored if
+ * enabled and the triggering reason is 'unload'.
+ *
+ * Also detaches editors from the summary field, if available.
+ *
+ * @param context
+ *   A DOM element, supplied by Drupal.detachBehaviors().
+ * @param fieldId
+ *   The id of an element to attach an editor to.
+ * @param trigger
+ *   A string describing what is causing the editor to be detached.
+ *   - 'serialize': The editor normally just syncs its contents to the original
+ *     textarea for value serialization before an AJAX request.
+ *   - 'unload': The editor is to be removed completely and the original
+ *     textarea restored.
+ *
+ * @see Drupal.detachBehaviors()
+ */
+Drupal.wysiwygDetach = function (context, fieldId, trigger) {
+  var fieldInfo = getFieldInfo(fieldId),
+      trigger = trigger || 'unload';
+  // Detach from main field.
+  detachFromField(fieldId, context, trigger);
+  if (trigger == 'unload') {
+    // Attach the resize behavior by forcing status to false. Other values are
+    // intentionally kept the same to show which editor is normally attached.
+    attachToField(fieldId, context, {forceDisabled: true});
+    Drupal.wysiwygAttachToggleLink(context, fieldId);
+  }
+  // Detach from summary field.
+  if (fieldInfo.summary && _internalInstances[fieldInfo.summary]) {
+    // The "Edit summary" click handler could re-enable the editor by mistake.
+    $('#' + fieldId).parents('.text-format-wrapper').find('.link-edit-summary').unbind('click.wysiwyg');
+    detachFromField(fieldId, context, trigger, {summary: true});
+    if (trigger == 'unload') {
+      attachToField(fieldId, context, {summary: true});
+    }
+  }
+};
+
+/**
+ * Helper to detach and clean up after an editor for a single field.
+ *
+ * Removes the 'instance' object under Drupal.wysiwyg.instances[fieldId].
+ *
+ * @param mainFieldId
+ *  The id of the field's main element, for fetching field info.
+ * @param context
+ *   A DOM element, supplied by Drupal.detachBehaviors().
+ * @param trigger
+ *   A string describing what is causing the editor to be detached.
+ *   - 'serialize': The editor normally just syncs its contents to the original
+ *     textarea for value serialization before an AJAX request.
+ *   - 'unload': The editor is to be removed completely and the original
+ *     textarea restored.
+ * @param params
+ *   An optional object for overriding state information for the editor with the
+ *   following properties:
+ *   - 'summary': Set to true to indicate to detach from the summary instead of
+ *     the main element. Defaults to false.
+ *
+ * @see Drupal.wysiwygDetach()
+ */
+function detachFromField(mainFieldId, context, trigger, params) {
+  params = params || {};
+  var fieldInfo = getFieldInfo(mainFieldId);
+  var fieldId = (params.summary ? fieldInfo.summary : mainFieldId);
+  var enabled = false;
+  var editor = 'none';
+  if (_internalInstances[fieldId]) {
+    enabled = _internalInstances[fieldId]['status'];
+    editor = (enabled ? _internalInstances[fieldId].editor : 'none');
+  }
+  var stateParams = {
+    field: fieldId,
+    'status': enabled,
+    editor: fieldInfo.editor,
+    format: fieldInfo.activeFormat,
+    resizable: fieldInfo.resizable
+  };
+  if (jQuery.isFunction(Drupal.wysiwyg.editor.detach[editor])) {
+    Drupal.wysiwyg.editor.detach[editor].call(_internalInstances[fieldId], context, stateParams, trigger);
+  }
+  if (trigger == 'unload') {
+    delete Drupal.wysiwyg.instances[fieldId];
+    delete _internalInstances[fieldId];
+  }
+}
+
+/**
+ * Append or update an editor toggle link to a target element.
+ *
+ * @param context
+ *   A DOM element, supplied by Drupal.attachBehaviors().
+ * @param fieldId
+ *   The id of an element to attach an editor to.
+ */
+Drupal.wysiwygAttachToggleLink = function(context, fieldId) {
+  var fieldInfo = getFieldInfo(fieldId),
+      editor = fieldInfo.getFormatInfo().editor;
+  if (!fieldInfo.getFormatInfo().toggle) {
+    // Otherwise, ensure that toggle link is hidden.
+    $('#wysiwyg-toggle-' + fieldId).hide();
+    return;
+  }
+  if (!$('#wysiwyg-toggle-' + fieldId, context).length) {
+    var text = document.createTextNode(fieldInfo.enabled ? Drupal.settings.wysiwyg.disable : Drupal.settings.wysiwyg.enable),
+      a = document.createElement('a'),
+      div = document.createElement('div');
+    $(a).attr({ id: 'wysiwyg-toggle-' + fieldId, href: 'javascript:void(0);' }).append(text);
+    $(div).addClass('wysiwyg-toggle-wrapper').append(a);
+    if ($('#' + fieldInfo.select).closest('.fieldset-wrapper').prepend(div).length == 0) {
+      // Fall back to inserting the link right after the field.
+      $('#' + fieldId).after(div);
+    };
+  }
+  $('#wysiwyg-toggle-' + fieldId, context)
+    .html(fieldInfo.enabled ? Drupal.settings.wysiwyg.disable : Drupal.settings.wysiwyg.enable).show()
+    .unbind('click.wysiwyg')
+    .bind('click.wysiwyg', { 'fieldId': fieldId, 'context': context }, Drupal.wysiwyg.toggleWysiwyg);
+
+  // Hide toggle link in case no editor is attached.
+  if (editor == 'none') {
+    $('#wysiwyg-toggle-' + fieldId).hide();
+  }
+};
+
+/**
+ * Callback for the Enable/Disable rich editor link.
+ */
+Drupal.wysiwyg.toggleWysiwyg = function (event) {
+  var context = event.data.context,
+      fieldId = event.data.fieldId,
+      fieldInfo = getFieldInfo(fieldId);
+  // Toggling the enabled state indirectly toggles use of the 'none' editor.
+  if (fieldInfo.enabled) {
+    fieldInfo.enabled = false;
+    Drupal.wysiwygDetach(context, fieldId, 'unload');
+  }
+  else {
+    fieldInfo.enabled = true;
+    Drupal.wysiwygAttach(context, fieldId);
+  }
+  fieldInfo.formats[fieldInfo.activeFormat].enabled = fieldInfo.enabled;
+}
+
+
+/**
+ * Event handler for when the selected format is changed.
+ */
+function formatChanged(event) {
+  var fieldId = _selectToField[this.id.replace(/--\d+$/, '')];
+  var context = $(this).closest('form');
+  var newFormat = 'format' + $(this).val();
+  // Field state is fetched by reference.
+  var currentField = getFieldInfo(fieldId);
+  // Prevent double-attaching if change event is triggered manually.
+  if (newFormat === currentField.activeFormat) {
+    return;
+  }
+  // Save the state of the current format.
+  if (currentField.formats[currentField.activeFormat]) {
+    currentField.formats[currentField.activeFormat].enabled = currentField.enabled;
+  }
+  // Switch format/profile.
+  currentField.activeFormat = newFormat;
+  // Load the state from the new format.
+  if (currentField.formats[currentField.activeFormat]) {
+    currentField.enabled = currentField.formats[currentField.activeFormat].enabled;
+  }
+  else {
+    currentField.enabled = false;
+  }
+  // Attaching again will use the changed field state.
+  Drupal.wysiwygAttach(context, fieldId);
+}
+
+/**
+ * Convert JSON type placeholders into the actual types.
+ *
+ * Recognizes function references (callbacks) and Regular Expressions.
+ *
+ * To create a callback, pass in an object with the following properties:
+ * - 'drupalWysiwygType': Must be set to 'callback'.
+ * - 'name': A string with the name of the callback, use
+ *   'object.subobject.method' syntax for methods in nested objects.
+ * - 'context': An optional string with the name of an object for overriding
+ *   'this' inside the function. Use 'object.subobject' syntax for nested
+ *   objects. Defaults to the window object.
+ *
+ * To create a RegExp, pass in an object with the following properties:
+ * - 'drupalWysiwygType: Must be set to 'regexp'.
+ * - 'regexp': The Regular Expression as a string, without / wrappers.
+ * - 'modifiers': An optional string with modifiers to set on the RegExp object.
+ *
+ * @param json
+ *  The json argument with all recognized type placeholders replaced by the real
+ *  types.
+ *
+ * @return The JSON object with placeholder types replaced.
+ */
+function processObjectTypes(json) {
+  var out = null;
+  if (typeof json != 'object') {
+    return json;
+  }
+  out = new json.constructor();
+  if (json.drupalWysiwygType) {
+    switch (json.drupalWysiwygType) {
+      case 'callback':
+        out = callbackWrapper(json.name, json.context);
+        break;
+      case 'regexp':
+        out = new RegExp(json.regexp, json.modifiers ? json.modifiers : undefined);
+        break;
+      default:
+        out.drupalWysiwygType = json.drupalWysiwygType;
+    }
+  }
+  else {
+    for (var i in json) {
+      if (json.hasOwnProperty(i) && json[i] && typeof json[i] == 'object') {
+        out[i] = processObjectTypes(json[i]);
+      }
+      else {
+        out[i] = json[i];
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Convert function names into function references.
+ *
+ * @param name
+ *  The name of a function to use as callback. Use the 'object.subobject.method'
+ *  syntax for methods in nested objects.
+ * @param context
+ *  An optional string with the name of an object for overriding 'this' inside
+ *  the function. Use 'object.subobject' syntax for nested objects. Defaults to
+ *  the window object.
+ *
+ * @return
+ *  A function which will call the named function or method in the proper
+ *  context, passing through arguments and return values.
+ */
+function callbackWrapper(name, context) {
+  var namespaces = name.split('.'), func = namespaces.pop(), obj = window;
+  for (var i = 0; obj && i < namespaces.length; i++) {
+    obj = obj[namespaces[i]];
+  }
+  if (!obj) {
+    throw "Wysiwyg: Unable to locate callback " + namespaces.join('.') + "." + func + "()";
+  }
+  if (!context) {
+    context = obj;
+  }
+  else if (typeof context == 'string'){
+    namespaces = context.split('.');
+    context = window;
+    for (i = 0; context && i < namespaces.length; i++) {
+      context = context[namespaces[i]];
+    }
+    if (!context) {
+      throw "Wysiwyg: Unable to locate context object " + namespaces.join('.');
+    }
+  }
+  if (typeof obj[func] != 'function') {
+    throw "Wysiwyg: " + func + " is not a callback function";
+  }
+  return function () {
+    return obj[func].apply(context, arguments);
+  }
+}
+
+var oldBeforeSerialize = (Drupal.ajax ? Drupal.ajax.prototype.beforeSerialize : false);
+if (oldBeforeSerialize) {
+  /**
+   * Filter the ajax_html_ids list sent in AJAX requests.
+   *
+   * This overrides part of the form serializer to not include ids we know will
+   * not collide because editors are removed before those ids are reused.
+   *
+   * This avoids hitting like max_input_vars, which defaults to 1000,
+   * even with just a few active editor instances.
+   */
+  Drupal.ajax.prototype.beforeSerialize = function (element, options) {
+    var ret = oldBeforeSerialize.call(this, element, options);
+    var excludeSelectors = [];
+    $.each(Drupal.wysiwyg.excludeIdSelectors, function () {
+      if ($.isArray(this)) {
+        excludeSelectors = excludeSelectors.concat(this);
+      }
+    });
+    if (excludeSelectors.length > 0) {
+      var ajaxHtmlIdsArray = options.data['ajax_html_ids[]'];
+      if (!ajaxHtmlIdsArray || ajaxHtmlIdsArray.length === 0) {
+        return ret;
+      }
+      options.data['ajax_html_ids[]'] = [];
+      $('[id]:not(' + excludeSelectors.join(',') + ')').each(function () {
+        if ($.inArray(this.id, ajaxHtmlIdsArray) !== -1) {
+          options.data['ajax_html_ids[]'].push(this.id);
+        }
+      });
+    }
+    return ret;
+  };
+}
+
+// Respond to CTools detach behaviors event.
+$(document).unbind('CToolsDetachBehaviors.wysiwyg').bind('CToolsDetachBehaviors.wysiwyg', function(event, context) {
+  $('.wysiwyg:input', context).removeOnce('wysiwyg').each(function () {
+    Drupal.wysiwygDetach(context, this.id, 'unload');
+    // The 'none' instances are destroyed with the dialog.
+    delete Drupal.wysiwyg.instances[this.id];
+    delete _internalInstances[this.id];
+    var baseFieldId = (this.id.indexOf('--') === -1 ? this.id : this.id.substr(0, this.id.indexOf('--')));
+    delete _fieldInfoStorage[baseFieldId];
+  });
+});
+
+})(jQuery);
+;
