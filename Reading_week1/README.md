@@ -4,9 +4,9 @@
 
 Look for what has been left out or what we do not know.
 
-
-
 **Lecture note**
+
+**Discussion**
 
 **Required readings:**
 
@@ -18,18 +18,12 @@ Look for what has been left out or what we do not know.
 
 - Valenti: You're a hardcore feminist, I swear
 
-- Thom: Social justice less elitist
-
-  https://everydayfeminism.com/2015/09/social-justice-less-elitist/
+- Thom: [Social justice less elitist]([9 Ways We Can Make Social Justice Movements Less Elitist and More Accessible - Everyday Feminism](https://everydayfeminism.com/2015/09/social-justice-less-elitist/))
 
 **Optional:**
 
-- Gay: Bad Feminist
+- Gay: [Bad Feminist]([Bad Feminist | VQR Online](https://www.vqronline.org/essay/bad-feminist))
 
-  https://www.vqronline.org/essay/bad-feminist
-
-- Dolly Parton's America: Sad Ass Songs (podcast)
-
-  https://www.wnycstudios.org/podcasts/dolly-partons-america/episodes/sad-ass-songs
-
+- Dolly Parton's America: [Sad Ass Songs (podcast)](https://www.wnycstudios.org/podcasts/dolly-partons-america/episodes/sad-ass-songs)
+  
   
