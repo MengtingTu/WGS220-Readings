@@ -18,7 +18,7 @@ Look for what has been left out or what we do not know.
 
 - Valenti: You're a hardcore feminist, I swear
 
-- Thom: [Social justice less elitist]([9 Ways We Can Make Social Justice Movements Less Elitist and More Accessible - Everyday Feminism](https://everydayfeminism.com/2015/09/social-justice-less-elitist/))
+- Thom: [Social justice less elitist](https://everydayfeminism.com/2015/09/social-justice-less-elitist/)
 
 **Optional:**
 
