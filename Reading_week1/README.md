@@ -22,7 +22,7 @@ Look for what has been left out or what we do not know.
 
 **Optional:**
 
-- Gay: [Bad Feminist]([Bad Feminist | VQR Online](https://www.vqronline.org/essay/bad-feminist))
+- Gay: [Bad Feminist](https://www.vqronline.org/essay/bad-feminist)
 
 - Dolly Parton's America: [Sad Ass Songs (podcast)](https://www.wnycstudios.org/podcasts/dolly-partons-america/episodes/sad-ass-songs)
   

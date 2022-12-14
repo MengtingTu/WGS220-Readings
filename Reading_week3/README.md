@@ -8,6 +8,8 @@ Consider the social construction of gender and how its assumptions may limit opt
 
 **Lecture note**
 
+**Discussion**
+
 **Required readings:**
 
 - OBOS Chapter 10: Safer Sex
@@ -18,28 +20,18 @@ Consider the social construction of gender and how its assumptions may limit opt
 
 - Valenti: Feminists do it better
 
-- Alptraum: What it's like to have sex for the first time after transitioning
+- Alptraum: [What it's like to have sex for the first time after transitioning](https://www.them.us/story/sex-after-transitioning)
 
-  https://www.them.us/story/sex-after-transitioning
+- Pan and Moore: [The Gender Unicorn](http://www.transstudent.org/gender/)
 
-- Pan and Moore: The Gender Unicorn
-
-  http://www.transstudent.org/gender/
+  
 
 **Optional:**
 
-- How to masturbate if you have a vagina
+- [How to masturbate if you have a vagina](http://www.teenvogue.com/story/how-to-masturbate-if-you-have-a-vagina)
 
-  http://www.teenvogue.com/story/how-to-masturbate-if-you-have-a-vagina
+- [Purity Myth documentary](https://umich.kanopy.com/video/purity-myth)
 
-- Purity Myth documentary
+- [Gender unicorn video](https://www.youtube.com/watch?v=YPNCzXYy2CE)
 
-  https://umich.kanopy.com/video/purity-myth
-
-- Gender unicorn video
-
-  https://www.youtube.com/watch?v=YPNCzXYy2CE
-
-- Consent is like a cup of tea video
-
-  https://youtu.be/oQbei5JGiT8
+- [Consent is like a cup of tea video](https://youtu.be/oQbei5JGiT8)
