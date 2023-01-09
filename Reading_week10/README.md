@@ -1,4 +1,4 @@
-## Week9: Body Trouble
+## Week10: Dialogues of Disability
 
 **Strategy Focus:**
 
@@ -18,10 +18,6 @@ Identity women's agency in the midst of social constraint and the biomedical par
 
 - Siebers: In the Name of Pain
 
-
-
 **Optional:**
 
 - Taussig: [I've Been Paralyzed Since I Was 3. Here's Why Kindness Toward Disabled People Is More Complicated Than You Think]([Here&#x27;s Why Kindness Toward Disabled People Is Complicated | Time](https://time.com/5881597/disability-kindness/)
-  
-  

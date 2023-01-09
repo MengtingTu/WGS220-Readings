@@ -10,40 +10,30 @@ Identify other significant aspects of an individual’s or group’s social posi
 
 **Required readings:**
 
-- Crenshaw: the urgency of intersectionality
-
-  https://www.youtube.com/watch?v=akOe5-UsQ2o&t=3s
+- Crenshaw: [the urgency of intersectionality](https://www.youtube.com/watch?v=akOe5-UsQ2o&t=3s)
 
 - Jones: Levels of Racism: A Theoretical Framework and a Gardener's Tale
 
 - Gamble: Under the Shadow of Tuskegee
 
-- Wallis: Why racism, not race, is a risk of factor for dying of COVID-19
+- Wallis: [Why racism, not race, is a risk of factor for dying of COVID-19](https://www.scientificamerican.com/article/why-racism-not-race-is-a-risk-factor-for-dying-of-covid-191/)
 
-  https://www.scientificamerican.com/article/why-racism-not-race-is-a-risk-factor-for-dying-of-covid-191/
+  
 
 **Optional:**
 
-- Understanding Race
+- [Understanding Race](https://understandingrace.org/)
 
-  https://understandingrace.org/
+- Neighmond: [Can Racial Disparities in Maternal Health Be Reduced](https://www.npr.org/sections/health-shots/2019/05/10/722143121/why-racial-gaps-in-maternal-mortality-persist)
 
-- Neighmond: Can Racial Disparities in Maternal Health Be Reduced
+- White Privilege: [Unpacking the Invisible Knapsack](http://www.racialequitytools.org/resourcefiles/mcintosh.pdf)
 
-  https://www.npr.org/sections/health-shots/2019/05/10/722143121/why-racial-gaps-in-maternal-mortality-persist
-
-- White Privilege: Unpacking the Invisible Knapsack
-
-  http://www.racialequitytools.org/resourcefiles/mcintosh.pdf
-
-- Finch: Ever been told to 'check your privilege'? Here's what that really means
-
-  https://everydayfeminism.com/2015/07/what-checking-privilege-means/
+- Finch: [Ever been told to 'check your privilege'? Here's what that really means](https://everydayfeminism.com/2015/07/what-checking-privilege-means/)
 
 - Lauderdale: Birth outcomes for Arab-American women after September 11
 
-- Blaque: What is intersectionality
+- [Blaque: What is intersectionality](https://www.youtube.com/watch?v=lEeP_3vmdBY)
 
-  https://www.youtube.com/watch?v=lEeP_3vmdBY
+  
 
 ​		
